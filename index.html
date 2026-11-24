@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Gestión de trabajos programados B2B</title>
   <link rel="stylesheet" href="inelcom-design-system/tokens.css">
-  <link rel="stylesheet" href="css/app.css?v=32">
+  <link rel="stylesheet" href="css/app.css?v=37">
 </head>
 <body class="body-small">
 
@@ -118,35 +118,74 @@
   <main id="main" class="page">
     <div class="page__head">
       <h1 class="heading-h3">Gestión de trabajos programados B2B</h1>
-      <div class="page__actions">
-        <button type="button" id="btn-nuevo" class="btn btn--primary">
-          <svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>
-          Nuevo trabajo
-        </button>
-      </div>
     </div>
 
-    <!-- --- Indicadores globales --- -->
+    <!-- --- Indicadores globales (estados del Centro de operaciones) --- -->
     <section class="kpis" id="kpis" aria-label="Indicadores globales"></section>
 
-    <!-- --- Próximo envío automático al Centro de operaciones --- -->
-    <section class="envio" id="envio" aria-label="Envío al Centro de operaciones" hidden>
-      <span class="envio__icon"><svg class="ic" aria-hidden="true"><use href="#i-send"/></svg></span>
-      <div class="envio__body">
-        <p id="envio-text" class="body-small" aria-live="polite"></p>
-        <p class="body-xsmall text-tertiary">El sistema envía al Centro de operaciones, todos los días a la hora de corte, los trabajos validados, agendados o pospuestos pendientes.</p>
+    <!-- ===================================================================
+         AGENDAR TRABAJOS · bandeja del día
+         =================================================================== -->
+    <section class="card table-card" aria-labelledby="bandeja-title">
+      <div class="table-card__head">
+        <div class="table-card__titles">
+          <h2 id="bandeja-title" class="heading-h4">Agendar trabajos</h2>
+          <p class="body-xsmall text-tertiary" id="bandeja-sub"></p>
+        </div>
+        <div class="table-card__tools">
+          <button type="button" id="btn-enviar" class="btn btn--secondary">
+            <svg class="ic" aria-hidden="true"><use href="#i-send"/></svg>
+            Enviar ahora
+          </button>
+          <button type="button" id="btn-nuevo" class="btn btn--primary">
+            <svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>
+            Agendar nuevo trabajo
+          </button>
+        </div>
       </div>
-      <button type="button" id="btn-enviar" class="btn btn--secondary">
-        <svg class="ic" aria-hidden="true"><use href="#i-send"/></svg>
-        Enviar ahora
-      </button>
+
+      <!-- --- Envío automático cada 10 minutos --- -->
+      <div class="envio" id="envio">
+        <svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>
+        <p id="envio-text" class="body-small"></p>
+        <p class="body-xsmall text-tertiary envio__nota">El sistema envía las agendas pendientes al Centro de operaciones cada 10 minutos.</p>
+      </div>
+
+      <div class="table-scroll">
+        <table class="table" id="tabla-bandeja">
+          <caption class="sr-only">Bandeja de hoy. Usa el botón de cada fila para ver y editar el detalle.</caption>
+          <colgroup>
+            <col class="col-exp"><col class="col-fecha"><col><col class="col-acceso">
+            <col class="col-cliente"><col class="col-comuna"><col class="col-compromiso"><col class="col-centro">
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col"><span class="sr-only">Detalle</span></th>
+              <th scope="col">Fecha agendada</th>
+              <th scope="col">Proyecto</th>
+              <th scope="col">Acceso</th>
+              <th scope="col">Cliente</th>
+              <th scope="col">Comuna</th>
+              <th scope="col">Fecha compromiso</th>
+              <th scope="col">Centro de operaciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-bandeja" class="tbody-agendas"></tbody>
+        </table>
+      </div>
+      <div class="table-foot body-xsmall text-tertiary" id="foot-bandeja" aria-live="polite"></div>
     </section>
 
-    <section class="card table-card" aria-labelledby="table-title">
+    <!-- ===================================================================
+         HISTORIAL · agendas enviadas en días anteriores
+         =================================================================== -->
+    <section class="card table-card" aria-labelledby="historial-title">
       <div class="table-card__head">
-        <h2 id="table-title" class="heading-h4">Trabajos programados</h2>
+        <div class="table-card__titles">
+          <h2 id="historial-title" class="heading-h4">Historial</h2>
+          <p class="body-xsmall text-tertiary">Agendas enviadas en días anteriores. Si editas una, vuelve a Pendiente de envío y pasa a la bandeja.</p>
+        </div>
         <div class="table-card__tools">
-          <div class="rangos" id="rangos" role="group" aria-label="Ver trabajos por fecha"></div>
           <button type="button" class="btn btn--secondary btn--sm" id="btn-exportar">
             <svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>
             <span>Exportar</span>
@@ -163,35 +202,6 @@
           </div>
         </div>
         <div class="toolbar__field">
-          <label for="f-estado">Estado</label>
-          <div class="select">
-            <select id="f-estado" name="estado" class="input">
-              <option value="">Todos</option>
-              <option value="borrador">Borrador</option>
-              <option value="validado">Validado</option>
-              <option value="agendado">Agendado</option>
-              <option value="en_ejecucion">En ejecución</option>
-              <option value="pospuesto">Pospuesto</option>
-              <option value="cancelado">Cancelado</option>
-              <option value="ejecutado">Ejecutado</option>
-            </select>
-            <svg class="ic" aria-hidden="true"><use href="#i-chevron-down"/></svg>
-          </div>
-        </div>
-        <div class="toolbar__field">
-          <label for="f-centro">Centro de operaciones</label>
-          <div class="select">
-            <select id="f-centro" name="centro" class="input">
-              <option value="">Todos</option>
-              <option value="en_cola">En cola</option>
-              <option value="sin_enviar">Sin enviar</option>
-              <option value="cargado">Cargado</option>
-              <option value="error">Error de carga</option>
-            </select>
-            <svg class="ic" aria-hidden="true"><use href="#i-chevron-down"/></svg>
-          </div>
-        </div>
-        <div class="toolbar__field">
           <label for="f-zona">Zona</label>
           <div class="select">
             <select id="f-zona" name="zona" class="input">
@@ -201,7 +211,7 @@
           </div>
         </div>
         <fieldset class="toolbar__field toolbar__range">
-          <legend>Fecha</legend>
+          <legend>Fecha agendada</legend>
           <input id="f-desde" name="desde" type="date" class="input" aria-label="Fecha desde">
           <span aria-hidden="true" class="text-tertiary">a</span>
           <input id="f-hasta" name="hasta" type="date" class="input" aria-label="Fecha hasta">
@@ -209,40 +219,43 @@
         <button type="button" id="btn-limpiar" class="btn btn--ghost btn--sm" hidden>Limpiar filtros</button>
       </form>
 
-      <!-- --- Tabla --- -->
       <div class="table-scroll">
-        <table class="table">
-          <caption class="sr-only">Trabajos programados. Usa el botón de cada fila para ver y editar el detalle.</caption>
+        <table class="table" id="tabla-historial">
+          <caption class="sr-only">Historial de agendas enviadas. Usa el botón de cada fila para ver y editar el detalle.</caption>
           <colgroup>
             <col class="col-exp"><col class="col-fecha"><col><col class="col-acceso">
-            <col class="col-cliente"><col class="col-comuna"><col class="col-estado"><col class="col-centro">
+            <col class="col-cliente"><col class="col-comuna"><col class="col-compromiso"><col class="col-centro">
           </colgroup>
           <thead>
             <tr>
               <th scope="col"><span class="sr-only">Detalle</span></th>
-              <th scope="col">Fecha y horario</th>
+              <th scope="col">Fecha agendada</th>
               <th scope="col">Proyecto</th>
               <th scope="col">Acceso</th>
               <th scope="col">Cliente</th>
               <th scope="col">Comuna</th>
-              <th scope="col">Estado</th>
+              <th scope="col">Fecha compromiso</th>
               <th scope="col">Centro de operaciones</th>
             </tr>
           </thead>
-          <tbody id="tbody"></tbody>
+          <tbody id="tbody-historial" class="tbody-agendas"></tbody>
         </table>
       </div>
-      <div class="table-foot body-xsmall text-tertiary" id="table-foot" aria-live="polite"></div>
+      <div class="table-foot body-xsmall text-tertiary">
+        <p id="foot-historial" aria-live="polite"></p>
+        <!-- --- Paginación: 10 agendas por página --- -->
+        <nav class="pager" id="pager" aria-label="Páginas del historial"></nav>
+      </div>
     </section>
   </main>
 
   <!-- ===================================================================
-       DIÁLOGO: NUEVO TRABAJO
+       DIÁLOGO: NUEVA AGENDA
        =================================================================== -->
   <dialog id="dlg-nuevo" class="dialog" aria-labelledby="dlg-nuevo-title">
     <form id="form-nuevo" class="dialog__form" novalidate>
       <header class="dialog__head">
-        <h2 id="dlg-nuevo-title" class="heading-h4">Nuevo trabajo</h2>
+        <h2 id="dlg-nuevo-title" class="heading-h4">Nueva agenda</h2>
         <button type="button" class="icon-btn" data-close aria-label="Cerrar">
           <svg class="ic" aria-hidden="true"><use href="#i-x"/></svg>
         </button>
@@ -260,7 +273,7 @@
                        aria-autocomplete="list" aria-expanded="false" aria-controls="cb-list"
                        aria-describedby="cb-hint proyecto-err" placeholder="Código, razón social o segmento (ej. CHI-0047 o Farmacias)">
               </div>
-              <p id="cb-hint" class="field__hint">Datos desde GetBacklog. Escribe al menos 2 caracteres.</p>
+              <p id="cb-hint" class="field__hint">Datos desde GetBacklog.</p>
               <ul id="cb-list" class="listbox" role="listbox" aria-label="Proyectos encontrados" hidden></ul>
               <span id="cb-status" class="sr-only" aria-live="polite"></span>
             </div>
@@ -273,7 +286,7 @@
           <h3 class="step__title"><span class="step__n" aria-hidden="true">2</span>Accesos</h3>
           <fieldset class="field" data-field="accesos" aria-describedby="accesos-hint accesos-err">
             <legend class="sr-only">Accesos del proyecto</legend>
-            <p id="accesos-hint" class="field__hint">Se crea un trabajo por cada acceso seleccionado. Contacto, ubicación, zona y cluster vienen de la Base de Accesos.</p>
+            <p id="accesos-hint" class="field__hint">Se crea una agenda por cada acceso seleccionado.</p>
             <div id="accesos-list" class="accesos"></div>
             <p class="field__error" id="accesos-err" hidden></p>
           </fieldset>
@@ -286,11 +299,10 @@
       </div>
 
       <footer class="dialog__foot">
-        <p class="body-xsmall text-tertiary"><span class="req" aria-hidden="true">*</span> Obligatorio para crear. El borrador solo exige proyecto y acceso.</p>
+        <p class="body-xsmall text-tertiary"><span class="req" aria-hidden="true">*</span> Obligatorio. La agenda queda en Pendiente de envío y sale en el próximo envío automático.</p>
         <div class="dialog__actions">
           <button type="button" class="btn btn--ghost" data-close>Cancelar</button>
-          <button type="submit" class="btn btn--secondary" value="borrador">Guardar borrador</button>
-          <button type="submit" class="btn btn--primary" value="crear" id="btn-crear">Crear trabajo</button>
+          <button type="submit" class="btn btn--primary" value="crear" id="btn-crear">Crear agenda</button>
         </div>
       </footer>
     </form>
@@ -316,7 +328,7 @@
   </dialog>
 
   <!-- ===================================================================
-       DIÁLOGO: ELIMINAR TRABAJO (solo Jefatura)
+       DIÁLOGO: ELIMINAR AGENDA (solo Jefatura)
        =================================================================== -->
   <dialog id="dlg-eliminar" class="dialog dialog--sm" aria-labelledby="dlg-eliminar-title" aria-describedby="dlg-eliminar-body">
     <div class="dialog__form">
@@ -333,8 +345,8 @@
 
   <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
-  <script src="js/data.js?v=32"></script>
-  <script src="js/mocks.js?v=32"></script>
-  <script src="js/app.js?v=32"></script>
+  <script src="js/data.js?v=37"></script>
+  <script src="js/mocks.js?v=37"></script>
+  <script src="js/app.js?v=37"></script>
 </body>
 </html>

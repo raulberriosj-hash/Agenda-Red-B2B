@@ -1,8 +1,9 @@
 /* ==========================================================================
    DATOS SIMULADOS
    Proyectos (lo que devolvería GetBacklog), accesos (Base de Accesos) y
-   18 trabajos de ejemplo (algunos con historial de cambios). Las fechas son relativas a hoy para que el
-   prototipo siempre tenga trabajos pasados, de hoy y futuros.
+   52 agendas en el historial (algunas con historial de cambios). La bandeja
+   de hoy parte vacía: el gestor aún no ha agendado nada. Las fechas son relativas a hoy para
+   que el prototipo siempre tenga agendas pasadas, de hoy y futuras.
    Los campos de sistema (razón social, calle, comuna, región) van en
    mayúsculas, como llegan desde las plataformas de origen.
    ========================================================================== */
@@ -30,7 +31,7 @@
     'XI REGION', 'XII REGION'
   ];
   const ZONAS = ['ZONA 1', 'ZONA 2', 'ZONA 3', 'ZONA 4', 'ZONA 5', 'ZONA 6', 'ZONA 7', 'ZONA 8'];
-  const CLUSTERS = ['C1', 'C2', 'C3', 'C4'];
+  const CLUSTERS = ['C1', 'C2']; // los elige el gestor; definen la fecha compromiso
   const COMUNAS = [
     'ANTOFAGASTA', 'CERRILLOS', 'CHILLAN', 'CONCEPCION', 'IQUIQUE', 'LA FLORIDA', 'LA SERENA', 'LAS CONDES',
     'MAIPU', 'ÑUÑOA', 'PROVIDENCIA', 'PUDAHUEL', 'PUERTO MONTT', 'PUNTA ARENAS', 'RANCAGUA',
@@ -85,9 +86,11 @@
     a('A82', 'P9', '214931', 'ARAUCO', '255', 'VALDIVIA', 'XIV REGION', '-39.814000', '-73.245000', 'ZONA 8', 'C3', c('Lorena Schmidt', '', ''))
   ];
 
-  /* --- Trabajos --------------------------------------------------------- */
-  // t(id, acceso, díasDesdeHoy, inicio, fin, estado, cargaCentro, mensajeCentro, extra)
-  function t(id, accesoId, offset, inicio, fin, estado, centroEstado, centroMensaje, extra) {
+  /* --- Agendas ---------------------------------------------------------- */
+  // t(id, acceso, díasDesdeHoy, inicio, fin, cluster, solicitud (días desde hoy), centro, extra)
+  // centro: estado en el Centro de operaciones
+  //   'pendiente' | 'enviado' | 'error'  · fecha: último envío  · enAgenda: ya existe en Agenda de Red
+  function t(id, accesoId, offset, inicio, fin, cluster, solicitud, centro, extra) {
     const ac = ACCESOS.find(x => x.id === accesoId);
     const base = {
       id,
@@ -96,101 +99,87 @@
       contacto: Object.assign({}, ac.contacto),
       ubicacion: { calle: ac.calle, numero: ac.numero, comuna: ac.comuna, region: ac.region, lat: ac.lat, lon: ac.lon },
       agenda: { fecha: fecha(offset), inicio, fin },
-      estado,
+      solicitud: fecha(solicitud),
       zona: ac.zona,
-      cluster: ac.cluster,
+      cluster,
       comentario: '',
       historial: [], // { fecha, usuario, campo, antes, despues }
-      centro: { estado: centroEstado, mensaje: centroMensaje || '', fecha: centroEstado === 'sin_enviar' ? '' : marca(Math.min(offset, 0) - 1, '08:00') },
-      modificado: { usuario: 'Camila Rojas', fecha: marca(-1, '16:45') }
+      centro: Object.assign({ mensaje: '', fecha: '', enAgenda: false }, centro),
+      modificado: { usuario: 'Camila Rojas', fecha: marca(solicitud, '11:30') }
     };
     return Object.assign(base, extra || {});
   }
+  const enviado = (dia, hora) => ({ estado: 'enviado', fecha: marca(dia, hora), enAgenda: true });
 
   function h(fecha, usuario, campo, antes, despues) { return { fecha, usuario, campo, antes, despues }; }
 
   const TRABAJOS = [
-    t('TR-1031', 'A11', -6, '09:00', '13:00', 'ejecutado', 'cargado', '', {
+    /* --- Bandeja de hoy: parte vacía; la llena el gestor con "Agendar nuevo trabajo" */
+
+    /* --- Historial: enviadas en días anteriores -------------------------- */
+    t('TR-1031', 'A11', -6, '09:00', '13:00', 'C1', -9, enviado(-8, '10:10'), {
       comentario: 'Instalación de CPE y prueba de enlace 1 Gbps.',
-      modificado: { usuario: 'Matías Fuentes', fecha: marca(-6, '13:40') }
+      modificado: { usuario: 'Matías Fuentes', fecha: marca(-8, '10:05') }
     }),
-    t('TR-1032', 'A12', 2, '09:00', '13:00', 'agendado', 'cargado', '', {
+    t('TR-1032', 'A12', 2, '09:00', '13:00', 'C1', -2, enviado(-1, '16:50'), {
       comentario: 'Instalación de CPE y prueba de enlace 1 Gbps.',
       // Contacto editado en la plataforma: distinto del de la Base de Accesos
       contacto: { nombre: 'Ana Lagos', telefono: '973452290', correo: 'alagos@farmaciasdelvalle.cl' },
+      modificado: { usuario: 'Camila Rojas', fecha: marca(-1, '16:45') },
       historial: [
         h(marca(-1, '16:45'), 'Camila Rojas', 'c_nombre', 'Felipe Araya', 'Ana Lagos'),
         h(marca(-1, '16:45'), 'Camila Rojas', 'c_correo', 'faraya@farmaciasdelvalle.cl', 'alagos@farmaciasdelvalle.cl')
       ]
     }),
-    t('TR-1033', 'A13', 3, '14:00', '18:00', 'validado', 'sin_enviar', '', {
-      comentario: 'Requiere permiso de administración del edificio.',
-      modificado: { usuario: 'Camila Rojas', fecha: marca(0, '09:12') },
-      historial: [
-        h(marca(0, '09:12'), 'Camila Rojas', 'inicio', '09:00', '14:00'),
-        h(marca(0, '09:12'), 'Camila Rojas', 'fin', '13:00', '18:00')
-      ]
+    t('TR-1036', 'A71', -3, '09:00', '13:00', 'C2', -8, enviado(-7, '09:40')),
+    t('TR-1039', 'A41', -2, '09:00', '13:00', 'C1', -5, enviado(-4, '11:00'), {
+      modificado: { usuario: 'Javier Paredes', fecha: marca(-4, '10:50') }
     }),
-    t('TR-1034', 'A21', 1, '10:00', '12:00', 'agendado', 'error',
-      'El acceso no tiene código de sitio asociado en Agenda de Red.', {
-      comentario: 'Factibilidad para segundo enlace.'
-    }),
-    t('TR-1035', 'A22', 5, '08:30', '12:30', 'pospuesto', 'sin_enviar', 'Modificado después de la última carga.', {
-      comentario: 'Cliente sin acceso a la sala de comunicaciones hasta nuevo aviso.',
-      modificado: { usuario: 'Javier Paredes', fecha: marca(0, '08:05') },
-      historial: [
-        h(marca(-3, '10:20'), 'Camila Rojas', 'fecha', fecha(2), fecha(5)),
-        h(marca(0, '08:05'), 'Javier Paredes', 'estado', 'agendado', 'pospuesto'),
-        h(marca(0, '08:05'), 'Javier Paredes', 'comentario', '', 'Cliente sin acceso a la sala de comunicaciones hasta nuevo aviso.')
-      ]
-    }),
-    t('TR-1036', 'A23', 9, '09:00', '13:00', 'borrador', 'sin_enviar', '', {
-      comentario: 'Falta confirmar teléfono del contacto en sitio.'
-    }),
-    t('TR-1037', 'A31', 0, '21:00', '23:30', 'agendado', 'cargado', '', {
-      comentario: 'Ventana nocturna aprobada por el cliente.'
-    }),
-    t('TR-1038', 'A32', 4, '21:00', '23:30', 'agendado', 'error',
-      'Tiempo de espera agotado al conectar con Agenda de Red.'),
-    t('TR-1039', 'A41', -2, '09:00', '13:00', 'ejecutado', 'cargado', '', {
-      modificado: { usuario: 'Javier Paredes', fecha: marca(-2, '14:10') }
-    }),
-    t('TR-1040', 'A42', 7, '09:00', '13:00', 'pospuesto', 'sin_enviar', 'Modificado después de la última carga.', {
+    t('TR-1040', 'A42', 7, '09:00', '13:00', 'C2', -4, enviado(-1, '17:00'), {
       comentario: 'Reagendado a pedido del cliente por cierre de oficina.',
+      modificado: { usuario: 'Camila Rojas', fecha: marca(-1, '16:45') },
       historial: [
-        h(marca(-1, '16:45'), 'Camila Rojas', 'fecha', fecha(3), fecha(7)),
-        h(marca(-1, '16:45'), 'Camila Rojas', 'estado', 'agendado', 'pospuesto')
+        h(marca(-1, '16:45'), 'Camila Rojas', 'fecha', fecha(3), fecha(7))
       ]
     }),
-    t('TR-1041', 'A43', 0, '09:00', '13:00', 'en_ejecucion', 'cargado', '', {
-      comentario: 'Cuadrilla en sitio desde las 08:50.',
-      modificado: { usuario: 'Javier Paredes', fecha: marca(0, '08:52') },
-      historial: [
-        h(marca(0, '08:52'), 'Javier Paredes', 'estado', 'agendado', 'en_ejecucion')
-      ]
+    t('TR-1041', 'A43', 0, '09:00', '13:00', 'C1', -3, enviado(-2, '15:20'), {
+      comentario: 'Cuadrilla en sitio desde las 08:50.'
     }),
-    t('TR-1042', 'A51', -1, '15:00', '17:00', 'cancelado', 'sin_enviar', '', {
-      comentario: 'El cliente mantiene el servicio actual. Baja cancelada.'
+    t('TR-1042', 'A51', -1, '15:00', '17:00', 'C2', -6, enviado(-5, '10:00'), {
+      comentario: 'Retiro de equipos por baja del servicio.'
     }),
-    t('TR-1043', 'A61', 0, '14:00', '18:00', 'en_ejecucion', 'cargado', '', {
-      comentario: 'Site survey para puntos de acceso Wi-Fi.',
-      modificado: { usuario: 'Camila Rojas', fecha: marca(0, '14:05') }
+    t('TR-1043', 'A61', 0, '14:00', '18:00', 'C1', -2, enviado(-1, '12:40'), {
+      comentario: 'Site survey para puntos de acceso Wi-Fi.'
     }),
-    t('TR-1044', 'A72', 12, '10:00', '13:00', 'agendado', 'error',
-      'La comuna no coincide con la dirección registrada en el Centro de operaciones.'),
-    t('TR-1045', 'A82', 3, '09:00', '11:00', 'borrador', 'sin_enviar', ''),
-    t('TR-1046', 'A62', 8, '10:00', '12:00', 'validado', 'sin_enviar', ''),
-    t('TR-1047', 'A01', 2, '10:00', '23:59', 'agendado', 'cargado', '', {
+    t('TR-1045', 'A73', 1, '09:00', '11:00', 'C2', -3, enviado(-2, '09:20')),
+    t('TR-1047', 'A01', 2, '10:00', '23:59', 'C2', -4, enviado(-2, '11:40'), {
       comentario: 'habilitacion centro Teleton',
+      modificado: { usuario: 'Matías Fuentes', fecha: marca(-2, '11:30') },
       historial: [
         h(marca(-2, '11:30'), 'Matías Fuentes', 'zona', 'ZONA 6', 'ZONA 7'),
         h(marca(-2, '11:30'), 'Matías Fuentes', 'comentario', '', 'habilitacion centro Teleton')
       ]
     }),
-    t('TR-1048', 'A52', -1, '10:00', '12:00', 'agendado', 'cargado', '', {
+    t('TR-1048', 'A52', -1, '10:00', '12:00', 'C1', -3, enviado(-2, '10:30'), {
       comentario: 'La cuadrilla no reportó el cierre del trabajo.'
-    })
+    }),
+    ...anteriores()
   ];
+
+  /* --- Historial más antiguo, generado: para revisar la paginación ------ */
+  // En producción el historial supera las 400 agendas; aquí bastan unas 50.
+  function anteriores() {
+    const ids = ACCESOS.map(x => x.id);
+    const horarios = [['09:00', '13:00'], ['14:00', '18:00'], ['10:00', '12:00'], ['08:30', '12:30'], ['15:00', '17:00']];
+    const notas = ['', 'Instalación de CPE y prueba de enlace.', '', 'Visita técnica de factibilidad.', '', 'Cambio de equipo por falla.'];
+    return Array.from({ length: 41 }, (_, i) => {
+      const solicitud = -10 - Math.floor(i * 1.5);   // cada 1 o 2 días hacia atrás
+      const cluster = i % 3 === 0 ? 'C2' : 'C1';
+      const [inicio, fin] = horarios[i % horarios.length];
+      return t('TR-' + (1030 - i), ids[(i * 5) % ids.length], solicitud + 2 + (i % 4), inicio, fin, cluster, solicitud,
+        enviado(solicitud + (i % 2), i % 2 ? '09:10' : '16:40'), { comentario: notas[i % notas.length] });
+    });
+  }
 
   window.DATOS = { PROYECTOS, ACCESOS, TRABAJOS, REGIONES, ZONAS, CLUSTERS, COMUNAS, hoyISO: fecha(0) };
 })();
