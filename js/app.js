@@ -2,15 +2,15 @@
    AGENDA DE RED B2B · Lógica del prototipo
    La página tiene dos tablas con la misma fila y el mismo detalle:
    - Agendar trabajos: bandeja del día (pendientes, con error y enviadas hoy)
-   - Historial: agendas enviadas en días anteriores
+   - Agendas enviadas: enviadas en días anteriores (el "historial")
    Secciones:
      1. Utilidades y fechas      8. Envío automático cada 10 minutos
      2. Estados del Centro       9. Detalle en acordeón
      3. Estado de la app        10. Nueva agenda
      4. Avisos (toasts)         11. Enviar ahora (RPA)
      5. Validación              12. Rol, eliminación y exportación
-     6. Indicadores globales    13. Sidebar, filtros, eventos e inicio
-     7. Bandeja e historial
+     6. Indicadores globales    13. Selectores de fecha y hora (24 h)
+     7. Bandeja e historial     14. Sidebar, filtros, eventos e inicio
    Escenarios por URL: ?simular=error | ?simular=vacio | ?simular=corte
    ========================================================================== */
 (function () {
@@ -48,7 +48,31 @@
     const [f, h] = dt.split('T');
     return `${relativo(f) || fmtFecha(f)}, ${h}`;
   }
-  function horaActual() { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+  const pad2 = n => String(n).padStart(2, '0');
+  function horaActual() { const d = new Date(); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+
+  /* --- Formatos de los campos: fecha dd-mm-aaaa y hora HH:MM (24 h) ---- */
+  const fechaTxt = iso => iso ? iso.split('-').reverse().join('-') : '';
+  // '3-12-2026', '03/12/26', '3-12' o '03122026' → '2026-12-03' · '' si está vacío · null si no es una fecha
+  function fechaISO(txt) {
+    const v = String(txt || '').trim();
+    if (!v) return '';
+    const m = v.match(/^(\d{1,2})[-/.](\d{1,2})(?:[-/.](\d{2}|\d{4}))?$/) || v.match(/^(\d{2})(\d{2})(\d{4})$/);
+    if (!m) return null;
+    const d = Number(m[1]), mes = Number(m[2]);
+    let y = m[3] ? Number(m[3]) : parseISO(HOY).getFullYear();
+    if (y < 100) y += 2000;
+    const f = new Date(y, mes - 1, d);
+    return f.getMonth() === mes - 1 && f.getDate() === d ? isoOf(f) : null;
+  }
+  // '9' → '09:00' · '930' → '09:30' · '9:30' → '09:30' · null si no es una hora de 00:00 a 23:59
+  function horaNorm(txt) {
+    const v = String(txt || '').trim();
+    if (!v) return '';
+    const m = v.match(/^(\d{1,2})(?::?(\d{2}))?$/);
+    if (!m || Number(m[1]) > 23 || Number(m[2] || 0) > 59) return null;
+    return pad2(m[1]) + ':' + pad2(m[2] || 0);
+  }
   function ahora() { return `${HOY}T${horaActual()}`; }
   function icon(n, cls) { return `<svg class="ic ${cls || ''}" aria-hidden="true"><use href="#i-${n}"/></svg>`; }
   function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
@@ -90,6 +114,15 @@
   const porEnviar = t => t.centro.estado === 'pendiente' || t.centro.estado === 'error';
   // En la bandeja: todo lo no enviado, más lo enviado desde el último cambio de día
   const enBandeja = t => t.centro.estado !== 'enviado' || t.centro.fecha >= state.corte;
+  // La bandeja es de cada gestor: sus agendas, más las de otros que editó y quedaron por enviar
+  const esMia = t => t.creador === USUARIO;
+  const enMiBandeja = t => enBandeja(t) && (esMia(t) || (t.centro.estado !== 'enviado' && t.modificado.usuario === USUARIO));
+  // Agendas enviadas · "Mis agendas": las mías de días anteriores ·
+  // "Todas": las de todos, incluidas las enviadas hoy (menos las que están en mi bandeja)
+  function enEnviadas(t) {
+    if (enMiBandeja(t)) return false;
+    return state.filtros.quien === 'mias' ? esMia(t) && !enBandeja(t) : t.centro.estado === 'enviado' || !enBandeja(t);
+  }
 
   // s: clave de CENTRO · label: texto alternativo · msg: detalle del último envío (tooltip)
   function centroHTML(s, label, msg) {
@@ -108,7 +141,7 @@
     pagina: 1,                   // página visible del historial
     cargando: true,
     error: false,
-    filtros: { q: '', zona: '', desde: '', hasta: '' },
+    filtros: { quien: 'mias', q: '', zona: '', desde: '', hasta: '' }, // quien: 'mias' | 'todas'
     rol: 'gestor',               // 'gestor' | 'jefatura' (simulado)
     historialAbierto: new Set(), // ids con el historial de cambios desplegado
     abierto: null,               // id con el detalle abierto (en cualquiera de las dos tablas)
@@ -134,6 +167,8 @@
      rechaza si cambió: una agenda antigua se puede editar sin reagendarla.
      ------------------------------------------------------------------------ */
   const RE_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  const RE_HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
+  const FECHAS = ['a_fecha', 'desde', 'hasta'], HORAS_CAMPOS = ['a_inicio', 'a_fin'];
   function telefonoValido(v) {
     const d = v.replace(/\D/g, '');
     return (d.length === 11 && d.startsWith('56')) || (d.length === 9 && /^[29]/.test(d));
@@ -158,20 +193,30 @@
     if (val('c_telefono') && !telefonoValido(val('c_telefono'))) e.c_telefono = 'Usa 9 dígitos (ej. 939412174) o +56 9 3941 2174.';
     if (val('c_correo') && !RE_CORREO.test(val('c_correo'))) e.c_correo = 'Revisa el correo (ej. nombre@empresa.cl).';
     if (val('a_cluster') && !DIAS_COMPROMISO[val('a_cluster')]) e.a_cluster = 'Elige C1 o C2.';
+    const fechaOk = val('a_fecha') && val('a_fecha') !== 'invalida';
+    if (val('a_fecha') === 'invalida') e.a_fecha = 'Usa el formato dd-mm-aaaa (ej. 03-12-2026).';
+    HORAS_CAMPOS.forEach(k => { if (val(k) && !RE_HORA.test(val(k))) e[k] = 'Usa el formato de 24 horas (ej. 09:30 o 18:00).'; });
+    const horasOk = RE_HORA.test(val('a_inicio')) && RE_HORA.test(val('a_fin'));
     // Consistencia
     const cambioFecha = !orig || val('a_fecha') !== orig.fecha;
     const cambioInicio = !orig || cambioFecha || val('a_inicio') !== orig.inicio;
-    if (val('a_fecha') && cambioFecha && val('a_fecha') < HOY) e.a_fecha = 'La fecha ya pasó. Elige hoy o una fecha futura.';
-    if (val('a_inicio') && val('a_fin') && val('a_fin') <= val('a_inicio')) e.a_fin = 'El término debe ser posterior al inicio.';
-    if (cambioInicio && val('a_fecha') === HOY && val('a_inicio') && val('a_inicio') < horaActual()) {
+    if (fechaOk && cambioFecha && val('a_fecha') < HOY) e.a_fecha = 'La fecha ya pasó. Elige hoy o una fecha futura.';
+    if (horasOk && val('a_fin') <= val('a_inicio')) e.a_fin = 'El término debe ser posterior al inicio.';
+    if (cambioInicio && val('a_fecha') === HOY && RE_HORA.test(val('a_inicio')) && val('a_inicio') < horaActual()) {
       e.a_inicio = 'Esa hora ya pasó hoy. Elige una hora posterior.';
     }
     return e;
   }
 
+  // Fechas a ISO ('invalida' si no se entiende) y horas completas a HH:MM
   function leer(form) {
     const d = {};
-    new FormData(form).forEach((v, k) => { if (k !== 'accesos') d[k] = v; });
+    new FormData(form).forEach((v, k) => {
+      if (k === 'accesos') return;
+      if (FECHAS.includes(k)) { const iso = fechaISO(v); d[k] = iso === null ? 'invalida' : iso; }
+      else if (HORAS_CAMPOS.includes(k)) d[k] = horaNorm(v) || v.trim();
+      else d[k] = v;
+    });
     return d;
   }
   const serializar = form => JSON.stringify(Array.from(new FormData(form)));
@@ -216,6 +261,13 @@
       ctrl = `<div class="select">${ctrl}${icon('chevron-down')}</div>`;
     } else if (o.tipo === 'textarea') {
       ctrl = `<textarea id="${id}" name="${o.k}" class="input" rows="${o.rows || 2}" ${aria}${o.placeholder ? ` placeholder="${esc(o.placeholder)}"` : ''}>${esc(o.valor)}</textarea>`;
+    } else if (o.tipo === 'fecha' || o.tipo === 'hora') {
+      // Selector propio (sección 13): calendario o lista de horas de 24 h
+      const fecha = o.tipo === 'fecha';
+      ctrl = `<div class="picker"><input id="${id}" name="${o.k}" type="text" class="input picker__input" value="${esc(fecha ? fechaTxt(o.valor) : o.valor)}"
+        placeholder="${fecha ? 'dd-mm-aaaa' : 'HH:MM'}" maxlength="${fecha ? 10 : 5}" inputmode="numeric" autocomplete="off"
+        data-picker="${o.tipo}" aria-haspopup="dialog" aria-expanded="false" ${aria} ${o.attrs || ''}>
+        <button type="button" class="picker__btn" tabindex="-1" aria-hidden="true">${icon(fecha ? 'calendar' : 'clock')}</button></div>`;
     } else {
       ctrl = `<input id="${id}" name="${o.k}" type="${o.tipo || 'text'}" class="input" value="${esc(o.valor)}" ${aria} ${o.attrs || ''}>`;
     }
@@ -237,10 +289,11 @@
       box.innerHTML = Array.from({ length: 3 }, () => `<div class="kpi" aria-hidden="true"><span class="kpi__icon" style="background:var(--background-tertiary)"></span><span><span class="sk" style="width:60%"></span><span class="sk" style="width:30%;height:20px"></span></span></div>`).join('');
       return;
     }
-    const cuenta = (...e) => state.trabajos.filter(t => e.includes(t.centro.estado)).length;
+    const mias = state.trabajos.filter(t => esMia(t) || enMiBandeja(t)); // acompañan a mi bandeja
+    const cuenta = (...e) => mias.filter(t => e.includes(t.centro.estado)).length;
     const items = [
       { k: 'pendientes', ic: 'hourglass', label: 'Pendientes de envío', value: cuenta('pendiente', 'en_proceso') },
-      { k: 'enviados', ic: 'circle-check', label: 'Enviados', value: cuenta('enviado') },
+      { k: 'enviados', ic: 'circle-check', label: 'Enviados hoy', value: mias.filter(t => t.centro.estado === 'enviado' && t.centro.fecha >= `${HOY}T00:00`).length },
       { k: 'errores', ic: 'alert-triangle', label: 'Error de carga', value: cuenta('error') }
     ];
     box.innerHTML = items.map(i => `<div class="kpi kpi--${i.k}">
@@ -260,31 +313,31 @@
   const PRIORIDAD = { error: 0, pendiente: 1, en_proceso: 2, enviado: 3 };
 
   function bandeja() {
-    return state.trabajos.filter(enBandeja)
+    return state.trabajos.filter(enMiBandeja)
       .sort((a, b) => PRIORIDAD[a.centro.estado] - PRIORIDAD[b.centro.estado] || llave(a).localeCompare(llave(b)));
   }
   function historialVisible() {
     const f = state.filtros;
     const q = norm(f.q.trim());
     return state.trabajos.filter(t => {
-      if (enBandeja(t)) return false;
+      if (!enEnviadas(t)) return false;
       if (f.zona && t.zona !== f.zona) return false;
       if (f.desde && t.agenda.fecha < f.desde) return false;
       if (f.hasta && t.agenda.fecha > f.hasta) return false;
       if (q) {
         const p = proyecto(t.proyectoId), a = acceso(t.accesoId);
-        const texto = norm([t.id, p.codigo, p.razonSocial, p.segmento, p.tipo, a.codigo, t.ubicacion.calle, t.ubicacion.comuna, t.zona, t.cluster, t.contacto.nombre].join(' '));
+        const texto = norm([t.id, p.codigo, p.razonSocial, p.segmento, p.tipo, a.codigo, t.ubicacion.calle, t.ubicacion.comuna, t.zona, t.cluster, t.contacto.nombre, t.creador].join(' '));
         if (!texto.includes(q)) return false;
       }
       return true;
-    }).sort((a, b) => llave(b).localeCompare(llave(a))); // lo más reciente primero
+    }).sort((a, b) => b.centro.fecha.localeCompare(a.centro.fecha) || llave(b).localeCompare(llave(a))); // último envío primero
   }
-  const totalHistorial = () => state.trabajos.filter(t => !enBandeja(t)).length;
+  const totalHistorial = () => state.trabajos.filter(enEnviadas).length;
 
-  // Mini calendario (color según dónde está la agenda) + fecha y horario escritos
+  // Mini calendario (celeste: por enviar · gris: enviada) + fecha y horario escritos
   function fechaHTML(t) {
     const d = parseISO(t.agenda.fecha), dif = difDias(t.agenda.fecha);
-    const hoja = !enBandeja(t) ? 'hoja--historial' : t.centro.estado === 'enviado' ? 'hoja--enviado' : 'hoja--pendiente';
+    const hoja = t.centro.estado === 'enviado' ? 'hoja--enviada' : 'hoja--pendiente';
     const cuando = dif === 0 ? 'Hoy · ' : dif === 1 ? 'Mañana · ' : '';
     return `<div class="fecha">
       <span class="hoja ${hoja}" aria-hidden="true"><span class="hoja__dia">${DIAS[d.getDay()]}</span><span class="hoja__num">${d.getDate()}</span><span class="hoja__mes">${MESES[d.getMonth()]}</span></span>
@@ -306,7 +359,8 @@
       <td class="cell-cliente" title="${esc(p.razonSocial)}"><span>${esc(p.razonSocial)}</span></td>
       <td><div class="cell-2"><span title="${esc(t.ubicacion.comuna)}">${icon('map-pin', 'ic-inline')}${esc(t.ubicacion.comuna)}</span><span class="meta">${esc(t.zona)}</span></div></td>
       <td><div class="cell-2"><span>${comp ? fmtFecha(comp) : '—'}</span><span class="meta">${esc(t.cluster)} · ${DIAS_COMPROMISO[t.cluster] || 0} hábiles</span></div></td>
-      <td>${centroDe(t)}</td>
+      <td><div class="cell-2">${centroDe(t)}${t.centro.fecha && t.centro.estado !== 'pendiente' && t.centro.estado !== 'en_proceso'
+        ? `<span class="meta">${fmtMarca(t.centro.fecha)}</span>` : ''}</div></td>
     </tr>`;
   }
 
@@ -323,16 +377,16 @@
       error: { cls: 'state--error', ic: 'alert-triangle', t: 'No pudimos cargar las agendas',
         p: 'Revisa tu conexión e inténtalo de nuevo. Si el problema sigue, avisa a soporte.',
         b: `<button type="button" class="btn btn--secondary" data-action="reintentar">${icon('refresh')}Reintentar</button>` },
-      bandeja: { cls: '', ic: 'inbox', t: 'La bandeja de hoy está vacía',
-        p: 'Crea una agenda a partir de un proyecto de GetBacklog y sus accesos. Quedará pendiente de envío.',
+      bandeja: { cls: 'state--compacto', ic: 'inbox', t: 'La bandeja de hoy está vacía',
+        p: 'Agenda un trabajo a partir de un proyecto y sus accesos.',
         b: `<button type="button" class="btn btn--primary" data-action="nuevo">${icon('plus')}Agendar nuevo trabajo</button>` },
-      historial: { cls: '', ic: 'history', t: 'Aún no hay agendas en el historial',
+      historial: { cls: '', ic: 'history', t: 'Aún no hay agendas enviadas',
         p: 'Las agendas enviadas pasan aquí al cambiar el día.', b: '' },
       sin: { cls: '', ic: 'search', t: 'Ninguna agenda coincide con los filtros',
         p: 'Prueba con otra búsqueda o amplía el rango de fechas.',
         b: `<button type="button" class="btn btn--secondary" data-action="limpiar">Limpiar filtros</button>` }
     }[tipo];
-    return `<tr class="state-row"><td colspan="8"><div class="state ${E.cls}">
+    return `<tr class="state-row${E.cls ? ' ' + E.cls : ''}"><td colspan="8"><div class="state ${E.cls}">
       <span class="state__icon">${icon(E.ic)}</span>
       <h2 class="body-base-bold">${E.t}</h2><p>${E.p}</p>${E.b}</div></td></tr>`;
   }
@@ -369,18 +423,14 @@
   }
 
   function renderPies() {
-    const fb = $('#foot-bandeja'), fh = $('#foot-historial');
-    $('#bandeja-sub').textContent = `Bandeja de hoy · ${fmtFecha(HOY)}. Al cambiar el día, las agendas enviadas pasan al historial.`;
+    const fh = $('#foot-historial');
+    $('#bandeja-sub').textContent = `Bandeja de hoy · ${fmtFecha(HOY)}`;
     renderPaginador();
-    if (state.cargando) { fb.textContent = 'Cargando agendas…'; fh.textContent = ''; return; }
-    if (state.error) { fb.textContent = ''; fh.textContent = ''; return; }
-    const B = state.bandeja;
-    const pend = B.filter(porEnviar).length, env = B.filter(t => t.centro.estado === 'enviado').length;
-    fb.innerHTML = `<span><strong>${B.length}</strong> ${plural(B.length, 'agenda', 'agendas')} en la bandeja · ${pend} por enviar · ${env} ${plural(env, 'enviada', 'enviadas')} hoy</span>`;
+    if (state.cargando || state.error) { fh.textContent = ''; return; }
     const n = state.historial.length, desde = (state.pagina - 1) * POR_PAGINA;
     const filtrado = n < totalHistorial() ? ` (filtradas de ${totalHistorial()})` : '';
     fh.innerHTML = n
-      ? `Mostrando <strong>${desde + 1}–${Math.min(desde + POR_PAGINA, n)}</strong> de ${n} ${plural(n, 'agenda', 'agendas')}${filtrado} · más recientes primero`
+      ? `Mostrando <strong>${desde + 1}–${Math.min(desde + POR_PAGINA, n)}</strong> de ${n} ${plural(n, 'agenda', 'agendas')}${filtrado} · último envío primero`
       : '';
   }
 
@@ -443,7 +493,7 @@
      operaciones las agendas pendientes y reintenta las que tienen error.
      ------------------------------------------------------------------------ */
   const INTERVALO_MIN = 10;
-  const cola = () => state.trabajos.filter(porEnviar);
+  const cola = () => state.trabajos.filter(t => enMiBandeja(t) && porEnviar(t));
   function segundosParaEnvio() {
     const d = new Date();
     return INTERVALO_MIN * 60 - ((d.getMinutes() % INTERVALO_MIN) * 60 + d.getSeconds());
@@ -471,7 +521,6 @@
     const t = tramo();
     if (t !== ultimoTramo) { ultimoTramo = t; envioAutomatico(); }
     renderEnvio();
-    if (state.abierto) refrescarSlotsDetalle(state.abierto); // "sale en X min"
   }
 
   async function envioAutomatico() {
@@ -490,17 +539,16 @@
 
   function avisoCentro(t) {
     if (t.centro.estado === 'error') {
-      return `<div class="alert alert--error" role="alert">${icon('alert-triangle')}<div><strong>No se pudo cargar en el Centro de operaciones.</strong> ${esc(t.centro.mensaje)} Corrige los datos si corresponde. Se reintentará en el próximo envío (${proximoEnvio()}), o envíala ahora.</div></div>`;
+      return `<div class="alert alert--error" role="alert">${icon('alert-triangle')}<div><strong>No se pudo cargar en el Centro de operaciones.</strong> ${esc(t.centro.mensaje)}</div></div>`;
     }
     if (t.centro.estado === 'pendiente' && t.centro.enAgenda) {
-      return `<div class="alert alert--warning">${icon('alert-circle')}<div><strong>Hay cambios sin enviar.</strong> Esta agenda cambió después del último envío. Se actualizará en Agenda de Red en el próximo envío (${proximoEnvio()}).</div></div>`;
+      return `<div class="alert alert--warning">${icon('alert-circle')}<div><strong>Cambios sin enviar.</strong> Esta agenda cambió después de su último envío al Centro de operaciones.</div></div>`;
     }
     return '';
   }
   function metaCentro(t) {
     const s = t.centro.estado;
-    const extra = s === 'pendiente' ? `sale ${proximoEnvio()}`
-      : t.centro.fecha && s !== 'en_proceso' ? fmtMarca(t.centro.fecha) : '';
+    const extra = t.centro.fecha && s !== 'pendiente' && s !== 'en_proceso' ? fmtMarca(t.centro.fecha) : '';
     return `Centro de operaciones: ${centroDe(t)}${extra ? ` <span>· ${extra}</span>` : ''}`;
   }
   // Envío manual de una agenda desde su detalle
@@ -534,6 +582,8 @@
           <fieldset class="detail__section">
             <legend>${icon('info')}Información general</legend>
             <dl class="dl dl--2">
+              <div><dt>ID de agenda</dt><dd class="dd-id">${esc(t.id)}</dd></div>
+              <div><dt>Fecha de solicitud</dt><dd>${fmtFecha(t.solicitud)}</dd></div>
               <div class="dl__full"><dt>Proyecto</dt><dd>${esc(p.codigo)}</dd></div>
               <div class="dl__full"><dt>Razón social</dt><dd>${esc(p.razonSocial)}</dd></div>
               <div><dt>Acceso</dt><dd>${esc(a.codigo)}</dd></div>
@@ -541,7 +591,7 @@
               <div><dt>Tipo de trabajo</dt><dd>${esc(p.tipo)}</dd></div>
               <div><dt>Topología</dt><dd>${esc(p.topologia)}</dd></div>
               <div><dt>Agencia</dt><dd>${dato(p.agencia === 'SIN DATO' ? '' : p.agencia)}</dd></div>
-              <div><dt>Fecha de solicitud</dt><dd>${fmtFecha(t.solicitud)}</dd></div>
+              <div><dt>Agendada por</dt><dd>${esc(t.creador)}</dd></div>
             </dl>
           </fieldset>
           <fieldset class="detail__section">
@@ -564,10 +614,10 @@
           </fieldset>
           <fieldset class="detail__section">
             <legend>${icon('calendar-clock')}Agendamiento</legend>
-            ${campo({ idp, k: 'a_fecha', label: 'Fecha', tipo: 'date', valor: t.agenda.fecha, req: true })}
+            ${campo({ idp, k: 'a_fecha', label: 'Fecha', tipo: 'fecha', valor: t.agenda.fecha, req: true, attrs: `data-min="${HOY}"` })}
             <div class="row-2">
-              ${campo({ idp, k: 'a_inicio', label: 'Hora inicio', tipo: 'time', valor: t.agenda.inicio, req: true })}
-              ${campo({ idp, k: 'a_fin', label: 'Hora fin', tipo: 'time', valor: t.agenda.fin, req: true })}
+              ${campo({ idp, k: 'a_inicio', label: 'Hora inicio', tipo: 'hora', valor: t.agenda.inicio, req: true })}
+              ${campo({ idp, k: 'a_fin', label: 'Hora fin', tipo: 'hora', valor: t.agenda.fin, req: true })}
             </div>
             <div class="row-2">
               ${campo({ idp, k: 'a_zona', label: 'Zona', tipo: 'select', opciones: OPC_ZONAS, valor: t.zona, req: true })}
@@ -588,7 +638,7 @@
             <button type="button" class="btn btn--danger-ghost solo-jefatura" data-action="eliminar">${icon('trash')}Eliminar</button>
             <span class="detail__sep solo-jefatura" aria-hidden="true"></span>
             <span class="dirty-note" data-slot="dirty" hidden>${icon('alert-circle')}Cambios sin guardar</span>
-            <button type="button" class="btn btn--ghost" data-action="descartar" disabled>Descartar</button>
+            <button type="button" class="btn btn--ghost" data-action="descartar" disabled>Descartar cambios</button>
             <span data-slot="enviar">${enviarUnoHTML(t)}</span>
             <button type="submit" class="btn btn--primary" data-action="guardar" disabled>Guardar cambios</button>
           </div>
@@ -712,7 +762,7 @@
       return;
     }
     const id = form.dataset.id, t = byId(id), d = leer(form);
-    const estabaEnHistorial = !enBandeja(t);
+    const estabaEnHistorial = !enMiBandeja(t); // viene de Agendas enviadas (mía de otro día o de otro gestor)
     const contacto = { nombre: d.c_nombre.trim(), telefono: d.c_telefono.trim(), correo: d.c_correo.trim() };
     const cambios = registrarCambios(t, [
       ['fecha', t.agenda.fecha, d.a_fecha], ['inicio', t.agenda.inicio, d.a_inicio], ['fin', t.agenda.fin, d.a_fin],
@@ -741,9 +791,7 @@
       $('.detail__panel', det).focus({ preventScroll: true });
       if (estabaEnHistorial) filaEl(id).scrollIntoView({ block: 'start', behavior: 'smooth' });
     }
-    toast(estabaEnHistorial
-      ? `${id} volvió a Pendiente de envío y pasó a la bandeja. Sale ${proximoEnvio()}.`
-      : t.centro.estado === 'pendiente' ? `${id} actualizada. Sale en el próximo envío (${proximoEnvio()}).` : `${id} actualizada.`);
+    toast(estabaEnHistorial ? `${id} actualizada. Volvió a la bandeja como Pendiente de envío.` : `${id} actualizada.`);
   }
 
   /* ------------------------------------------------------------------------
@@ -759,9 +807,9 @@
     formNuevo.reset();
     Object.assign(nuevo, { proyecto: null, accesos: [], opciones: [], activo: -1, enviado: false, tocados: new Set() });
     $('#nuevo-campos').innerHTML = [
-      campo({ idp: 'n', k: 'a_fecha', label: 'Fecha', tipo: 'date', valor: '', req: true, attrs: `min="${HOY}"` }),
-      campo({ idp: 'n', k: 'a_inicio', label: 'Hora inicio', tipo: 'time', valor: '', req: true }),
-      campo({ idp: 'n', k: 'a_fin', label: 'Hora fin', tipo: 'time', valor: '', req: true }),
+      campo({ idp: 'n', k: 'a_fecha', label: 'Fecha', tipo: 'fecha', valor: '', req: true, attrs: `data-min="${HOY}"` }),
+      campo({ idp: 'n', k: 'a_inicio', label: 'Hora inicio', tipo: 'hora', valor: '', req: true }),
+      campo({ idp: 'n', k: 'a_fin', label: 'Hora fin', tipo: 'hora', valor: '', req: true }),
       campo({ idp: 'n', k: 'a_cluster', label: 'Cluster', tipo: 'select', opciones: OPC_CLUSTERS, valor: '', req: true, placeholder: 'Elige el cluster' }),
       `<p class="compromiso field--span2" id="n-compromiso">${compromisoHTML(HOY, '')}</p>`,
       campo({ idp: 'n', k: 'comentario', label: 'Comentario', tipo: 'textarea', valor: '', span: 'span4', placeholder: 'Indicaciones para el equipo en terreno (opcional)' })
@@ -851,13 +899,29 @@
       box.innerHTML = '<p class="accesos__empty text-tertiary">Este proyecto no tiene accesos en la Base de Accesos.</p>';
     } else {
       box.innerHTML = nuevo.accesos.map(a => {
-        const abiertas = state.trabajos.filter(t => t.accesoId === a.id && porEnviar(t)).length;
+        const vigentes = agendasVigentes(a.id);
         return `<label class="acc"><input type="checkbox" name="accesos" value="${a.id}"${nuevo.accesos.length === 1 ? ' checked' : ''}>
           <span class="acc__body"><span class="body-small-bold">Acceso ${esc(a.codigo)}</span>
           <span class="meta">${esc(a.calle)} ${esc(a.numero)}, ${esc(a.comuna)} · ${esc(a.zona)}</span>
-          ${abiertas ? `<span class="tag">Ya tiene ${abiertas} ${plural(abiertas, 'agenda pendiente', 'agendas pendientes')}</span>` : ''}</span></label>`;
+          ${vigentes.length ? `<span class="tag tag--aviso">${icon('alert-circle')}<span>${avisoDuplicado(vigentes)}</span></span>` : ''}</span></label>`;
       }).join('');
     }
+    actualizarBotonCrear();
+  }
+  // Agendas del acceso que siguen vigentes: por enviar, o agendadas para hoy o después
+  const agendasVigentes = aid => state.trabajos
+    .filter(t => t.accesoId === aid && (porEnviar(t) || t.agenda.fecha >= HOY))
+    .sort((a, b) => llave(a).localeCompare(llave(b)));
+  function avisoDuplicado(lista) {
+    const t = lista[0], cuando = `${fmtFecha(t.agenda.fecha)} ${t.agenda.inicio}`;
+    return lista.length === 1
+      ? `Ya tiene una agenda el ${cuando} (${t.id}, ${CENTRO[t.centro.estado].label})`
+      : `Ya tiene ${lista.length} agendas vigentes; la próxima, el ${cuando}`;
+  }
+  // "Crear agenda" o "Crear N agendas", según los accesos marcados
+  function actualizarBotonCrear() {
+    const n = $$('input[name="accesos"]:checked', formNuevo).length;
+    $('#btn-crear').textContent = n > 1 ? `Crear ${n} agendas` : 'Crear agenda';
   }
   async function cargarAccesos(pid) {
     nuevo.accesos = [];
@@ -891,7 +955,8 @@
         comentario: d.comentario.trim(),
         historial: [],
         centro: { estado: 'pendiente', mensaje: '', fecha: '', enAgenda: false },
-        modificado: { usuario: USUARIO, fecha: ahora() }
+        modificado: { usuario: USUARIO, fecha: ahora() },
+        creador: USUARIO
       };
     });
     state.trabajos.push(...creadas);
@@ -900,7 +965,7 @@
     const filas = creadas.map(t => filaEl(t.id)).filter(Boolean);
     filas.forEach(r => r.classList.add('is-new'));
     if (filas[0]) filas[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
-    toast(`${creadas.length} ${plural(creadas.length, 'agenda creada', 'agendas creadas')} en la bandeja. ${plural(creadas.length, 'Sale', 'Salen')} en el próximo envío (${proximoEnvio()}).`);
+    toast(`${creadas.length} ${plural(creadas.length, 'agenda creada', 'agendas creadas')} en la bandeja.`);
   }
 
   /* ------------------------------------------------------------------------
@@ -934,25 +999,15 @@
     if (btn) btn.focus();
   }
 
-  function resHTML(t) {
-    const r = carga.res[t.id];
-    if (carga.fase === 'revision') {
-      return centroDe(t) + (t.centro.estado === 'error' ? `<p class="meta">Se reintenta.</p>`
-        : t.centro.enAgenda ? `<p class="meta">Actualiza una agenda ya enviada.</p>` : '');
-    }
-    if (!r) return carga.lote.includes(t) ? centroHTML('en_proceso', 'Enviando…') : centroDe(t);
-    return r.ok ? centroHTML('enviado')
-      : centroHTML('error', 'Error') + `<p class="res-msg">${esc(r.mensaje)}</p>`;
-  }
-
-  function tablaCarga() {
-    return `<table class="carga-list"><thead><tr><th class="col-id">ID</th><th>Proyecto · Acceso</th><th class="col-f">Fecha</th><th class="col-res">Resultado</th></tr></thead><tbody>` +
-      carga.lista.map(t => {
-        const p = proyecto(t.proyectoId), a = acceso(t.accesoId);
-        return `<tr id="cg-${t.id}"><td class="cell-id">${t.id}</td>
-          <td><div class="cell-2"><span>${esc(p.codigo)} · Acceso ${esc(a.codigo)}</span><span class="meta">${esc(p.razonSocial)}</span></div></td>
-          <td><div class="cell-2"><span>${fmtFecha(t.agenda.fecha)}</span><span class="meta">${t.agenda.inicio}–${t.agenda.fin}</span></div></td>
-          <td data-res>${resHTML(t)}</td></tr>`;
+  // Lista de agendas del envío; en el resultado solo van las fallidas, con su mensaje
+  function tablaCarga(lista, conMensaje) {
+    return `<table class="carga-list"><thead><tr><th class="col-id">ID</th><th>Proyecto · Acceso</th><th class="col-f">Fecha</th></tr></thead><tbody>` +
+      lista.map(t => {
+        const p = proyecto(t.proyectoId), a = acceso(t.accesoId), r = carga.res[t.id];
+        return `<tr><td class="cell-id">${t.id}</td>
+          <td><div class="cell-2"><span>${esc(p.codigo)} · Acceso ${esc(a.codigo)}</span><span class="meta">${esc(p.razonSocial)}</span>
+            ${conMensaje && r ? `<span class="res-msg">${icon('alert-triangle')}${esc(r.mensaje)}</span>` : ''}</div></td>
+          <td><div class="cell-2"><span>${fmtFecha(t.agenda.fecha)}</span><span class="meta">${t.agenda.inicio}–${t.agenda.fin}</span></div></td></tr>`;
       }).join('') + '</tbody></table>';
   }
 
@@ -962,9 +1017,8 @@
     $$('[data-close]', dlgCarga).forEach(b => { b.disabled = carga.fase === 'enviando'; });
 
     if (carga.fase === 'revision') {
-      body.innerHTML = `<p>Se envían ahora <strong>${n} ${plural(n, 'agenda', 'agendas')}</strong> sin esperar el envío automático. El RPA genera el Excel consolidado y lo carga en Agenda de Red.</p>${tablaCarga()}`;
-      foot.innerHTML = `<p class="body-xsmall text-tertiary">Si no las envías ahora, salen solas ${proximoEnvio()}.</p>
-        <div class="dialog__actions"><button type="button" class="btn btn--ghost" data-close>Cancelar</button><button type="button" class="btn btn--primary" data-action="enviar">${icon('send')}Enviar ${n} ahora</button></div>`;
+      body.innerHTML = `<p>Se ${plural(n, 'enviará', 'enviarán')} <strong>${n} ${plural(n, 'agenda', 'agendas')}</strong> al Centro de operaciones.</p>${tablaCarga(carga.lista)}`;
+      foot.innerHTML = `<div class="dialog__actions"><button type="button" class="btn btn--ghost" data-close>Cancelar</button><button type="button" class="btn btn--primary" data-action="enviar">${icon('send')}Enviar ${n} ahora</button></div>`;
       return;
     }
 
@@ -973,23 +1027,19 @@
       body.innerHTML = `<div class="progress" role="status" aria-live="polite">
           <div class="body-small-bold" id="prog-text">Enviando ${carga.hechos} de ${total}…</div>
           <div class="progress__track" role="progressbar" aria-labelledby="prog-text" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${carga.hechos}"><div class="progress__fill" style="width:${(carga.hechos / total) * 100}%"></div></div>
-        </div>${tablaCarga()}`;
-      foot.innerHTML = `<p class="body-xsmall text-tertiary">No cierres esta ventana mientras el RPA trabaja.</p>
+        </div>${tablaCarga(carga.lote)}`;
+      foot.innerHTML = `<p class="body-xsmall text-tertiary">No cierres esta ventana.</p>
         <div class="dialog__actions"><button type="button" class="btn btn--primary" disabled>${icon('loader', 'spin')}Enviando…</button></div>`;
       return;
     }
 
     const ok = carga.lista.filter(t => carga.res[t.id] && carga.res[t.id].ok).length;
-    const err = carga.lista.filter(t => carga.res[t.id] && !carga.res[t.id].ok).length;
-    const aviso = err
-      ? `<div class="alert alert--warning">${icon('alert-triangle')}<div><strong>${err} ${plural(err, 'agenda no se cargó', 'agendas no se cargaron')}.</strong> Quedan en la bandeja: puedes reintentar ahora o dejarlas para el próximo envío (${proximoEnvio()}).</div></div>`
-      : `<div class="alert alert--success">${icon('circle-check')}<div><strong>Envío completo.</strong> ${plural(ok, 'La agenda quedó cargada', `Las ${ok} agendas quedaron cargadas`)} en Agenda de Red.</div></div>`;
+    const fallidas = carga.lista.filter(t => carga.res[t.id] && !carga.res[t.id].ok), err = fallidas.length;
     body.innerHTML = `<div class="summary">
         <div class="summary__item"><div class="summary__n">${ok}</div><div class="centro centro--enviado">${icon('check')}${plural(ok, 'Enviada', 'Enviadas')}</div></div>
         <div class="summary__item"><div class="summary__n">${err}</div><div class="centro centro--error">${icon('alert-triangle')}Con error</div></div>
-      </div>${aviso}${tablaCarga()}`;
-    foot.innerHTML = `<p class="body-xsmall text-tertiary">Resultado del RPA · ${fmtMarca(ahora())}</p>
-      <div class="dialog__actions">${err
+      </div>${err ? `<div class="carga-err"><h3 class="body-small-bold">No se ${plural(err, 'cargó; queda', 'cargaron; quedan')} en la bandeja con Error de carga</h3>${tablaCarga(fallidas, true)}</div>` : ''}`;
+    foot.innerHTML = `<div class="dialog__actions">${err
         ? `<button type="button" class="btn btn--secondary" data-close>Cerrar</button><button type="button" class="btn btn--primary" data-action="reintentar-carga">${icon('refresh')}Reintentar ${err} ${plural(err, 'fallida', 'fallidas')}</button>`
         : `<button type="button" class="btn btn--primary" data-close>Listo</button>`}</div>`;
   }
@@ -1023,11 +1073,9 @@
     lote.forEach(t => { delete carga.res[t.id]; });
     pintarCarga();
 
-    await enviarLote(lote, reintento, (r, t) => {
+    await enviarLote(lote, reintento, r => {
       carga.res[r.id] = r;
       carga.hechos++;
-      const cell = $(`#cg-${r.id} [data-res]`);
-      if (cell) cell.innerHTML = resHTML(t);
       const total = lote.length;
       $('#prog-text').textContent = `Enviando ${carga.hechos} de ${total}…`;
       $('.progress__fill').style.width = `${(carga.hechos / total) * 100}%`;
@@ -1037,9 +1085,7 @@
     carga.fase = 'resultado';
     pintarCarga();
     const btn = $('#carga-foot .btn--primary');
-    if (btn) btn.focus();
-    const err = lote.filter(t => !carga.res[t.id].ok).length;
-    toast(err ? `Envío terminado con ${err} ${plural(err, 'error', 'errores')}.` : 'Envío al Centro de operaciones completado.', err ? 'error' : 'success');
+    if (btn) btn.focus(); // el resultado queda en el diálogo: sin aviso aparte
   }
 
   // "Enviar ahora" desde el detalle: una sola agenda, sin diálogo
@@ -1051,7 +1097,7 @@
     const [r] = await enviarLote([t], t.centro.estado === 'error');
     const det = document.getElementById('det-' + id);
     if (det) $('.detail__panel', det).focus({ preventScroll: true }); // el botón desapareció
-    toast(r.ok ? `${id} quedó cargada en el Centro de operaciones.` : `${id} no se pudo cargar: ${r.mensaje}`, r.ok ? 'success' : 'error');
+    toast(r.ok ? `${id} enviada.` : `${id} no se pudo cargar: ${r.mensaje}`, r.ok ? 'success' : 'error');
   }
 
   /* ------------------------------------------------------------------------
@@ -1136,7 +1182,7 @@
       };
     });
     const blob = await Mocks.exportarTrabajos(filas);
-    const nombre = `historial-agendas-${HOY}.csv`;
+    const nombre = `agendas-enviadas-${HOY}.csv`;
     const url = URL.createObjectURL(blob);
     const link = Object.assign(document.createElement('a'), { href: url, download: nombre });
     document.body.append(link);
@@ -1150,8 +1196,276 @@
   $('#btn-exportar').addEventListener('click', exportar);
 
   /* ------------------------------------------------------------------------
-     13. Sidebar, filtros, eventos e inicio
+     13. Selectores de fecha y hora (24 h)
+     Campos de texto con calendario y lista de horas propios, para que el
+     formato sea el mismo en todo el sistema (dd-mm-aaaa y HH:MM en 24 h) sin
+     depender del navegador. Se puede escribir a mano o elegir en el selector.
+     Teclado: ↓ abre el selector · flechas recorren · Enter elige · Esc cierra.
      ------------------------------------------------------------------------ */
+  const pick = { input: null, pop: null, tipo: '', mes: null, activo: null };
+  const DIAS_LARGO = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  const MESES_LARGO = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const HORAS = Array.from({ length: 24 }, (_, i) => pad2(i));
+  const MINUTOS = Array.from({ length: 12 }, (_, i) => pad2(i * 5));
+  const fmtLargo = iso => { const d = parseISO(iso); return `${DIAS_LARGO[d.getDay()]} ${d.getDate()} de ${MESES_LARGO[d.getMonth()]} de ${d.getFullYear()}`; };
+  const disparar = el => ['input', 'change'].forEach(tipo => el.dispatchEvent(new Event(tipo, { bubbles: true })));
+
+  function abrirPicker(input, conTeclado) {
+    if (pick.input === input) { if (conTeclado) enfocarPicker(); return; }
+    cerrarPicker();
+    const pop = document.createElement('div');
+    pop.className = `pop pop--${input.dataset.picker}`;
+    pop.setAttribute('role', 'dialog');
+    pop.setAttribute('aria-label', input.dataset.picker === 'fecha' ? 'Elegir fecha' : 'Elegir hora');
+    Object.assign(pick, { input, pop, tipo: input.dataset.picker, activo: null });
+    // Dentro de un diálogo modal el selector va en el mismo diálogo (capa superior)
+    (input.closest('dialog') || document.body).append(pop);
+    input.setAttribute('aria-expanded', 'true');
+    pop.addEventListener('mousedown', e => e.preventDefault()); // con el mouse, el foco sigue en el campo
+    pop.addEventListener('click', clicPicker);
+    pop.addEventListener('keydown', teclaPicker);
+    if (pick.tipo === 'fecha') {
+      const iso = fechaISO(input.value) || (input.dataset.min > HOY ? input.dataset.min : HOY);
+      const d = parseISO(iso);
+      pick.mes = new Date(d.getFullYear(), d.getMonth(), 1);
+      pick.activo = iso;
+      pintarCalendario();
+    } else {
+      pintarHoras();
+    }
+    posicionarPicker();
+    if (conTeclado) enfocarPicker();
+  }
+
+  function cerrarPicker(enfocar) {
+    if (!pick.pop) return;
+    const input = pick.input;
+    pick.pop.remove();
+    input.setAttribute('aria-expanded', 'false');
+    Object.assign(pick, { input: null, pop: null, activo: null });
+    if (enfocar && input.isConnected) input.focus();
+  }
+
+  function enfocarPicker() {
+    if (!pick.pop) return;
+    const el = pick.tipo === 'fecha' ? $('.cal__dia[tabindex="0"]', pick.pop) : $('.hora__op[tabindex="0"]', pick.pop);
+    if (el) el.focus();
+  }
+
+  // Bajo el campo; si no cabe, sobre él. El selector es fijo: sigue al campo al desplazar
+  function posicionarPicker() {
+    if (!pick.pop) return;
+    if (!pick.input.isConnected) { cerrarPicker(); return; }
+    const r = pick.input.closest('.picker').getBoundingClientRect(), p = pick.pop;
+    const alto = p.offsetHeight, ancho = p.offsetWidth;
+    const arriba = innerHeight - r.bottom < alto + 8 && r.top > alto + 8;
+    p.style.top = `${arriba ? r.top - alto - 4 : r.bottom + 4}px`;
+    p.style.left = `${Math.max(8, Math.min(r.left, innerWidth - ancho - 8))}px`;
+  }
+
+  /* --- Calendario --- */
+  function pintarCalendario() {
+    if (!pick.pop) return;
+    const input = pick.input, sel = fechaISO(input.value);
+    const min = input.dataset.min || '', max = input.dataset.max || '';
+    const y = pick.mes.getFullYear(), mo = pick.mes.getMonth();
+    const lunes = new Date(y, mo, 1 - ((pick.mes.getDay() + 6) % 7)); // la semana parte el lunes
+    let filas = '';
+    for (let w = 0; w < 6; w++) {
+      filas += '<tr>';
+      for (let k = 0; k < 7; k++) {
+        const d = new Date(lunes);
+        d.setDate(lunes.getDate() + w * 7 + k);
+        const iso = isoOf(d), off = (min && iso < min) || (max && iso > max);
+        filas += `<td><button type="button" class="cal__dia${d.getMonth() !== mo ? ' is-fuera' : ''}" data-iso="${iso}" tabindex="${iso === pick.activo ? 0 : -1}"` +
+          `${iso === sel ? ' aria-selected="true"' : ''}${iso === HOY ? ' aria-current="date"' : ''}${off ? ' disabled' : ''} aria-label="${fmtLargo(iso)}">${d.getDate()}</button></td>`;
+      }
+      filas += '</tr>';
+    }
+    const hoyOff = (min && HOY < min) || (max && HOY > max);
+    pick.pop.innerHTML = `<div class="cal__head">
+        <button type="button" class="icon-btn" data-cal="-1" aria-label="Mes anterior">${icon('chevron-left')}</button>
+        <span class="cal__mes" aria-live="polite">${MESES_LARGO[mo]} ${y}</span>
+        <button type="button" class="icon-btn" data-cal="1" aria-label="Mes siguiente">${icon('chevron-right')}</button>
+      </div>
+      <table class="cal__grid" role="grid" aria-label="${MESES_LARGO[mo]} ${y}">
+        <thead><tr>${['lu', 'ma', 'mi', 'ju', 'vi', 'sá', 'do'].map((x, i) => `<th scope="col" abbr="${DIAS_LARGO[(i + 1) % 7]}">${x}</th>`).join('')}</tr></thead>
+        <tbody>${filas}</tbody>
+      </table>
+      <div class="cal__foot"><button type="button" class="btn btn--ghost btn--sm" data-cal="hoy"${hoyOff ? ' disabled' : ''}>Hoy</button></div>`;
+    // Si el día activo no está en la grilla (cambio de mes con las flechas del encabezado), el primero del mes
+    if (!$('.cal__dia[tabindex="0"]', pick.pop)) {
+      const primero = $$('.cal__dia:not(.is-fuera):not([disabled])', pick.pop)[0];
+      if (primero) { primero.tabIndex = 0; pick.activo = primero.dataset.iso; }
+    }
+  }
+
+  function moverMes(n) {
+    pick.mes = new Date(pick.mes.getFullYear(), pick.mes.getMonth() + n, 1);
+    pick.activo = null;
+    pintarCalendario();
+  }
+
+  function elegirFecha(iso) {
+    const input = pick.input;
+    input.value = fechaTxt(iso);
+    disparar(input);
+    cerrarPicker(true);
+  }
+
+  /* --- Horas: dos columnas, hora (00–23) y minutos (de 5 en 5) --- */
+  function pintarHoras() {
+    const [h, m] = (horaNorm(pick.input.value) || '').split(':');
+    const col = (k, label, vals, actual, defecto) => `<div class="hora__col">
+        <span class="hora__lbl" id="pk-${k}">${label}</span>
+        <div class="hora__list" role="listbox" aria-labelledby="pk-${k}" data-col="${k}">${vals.map(v =>
+          `<button type="button" role="option" class="hora__op" data-${k}="${v}" aria-selected="${v === actual}" tabindex="${v === (vals.includes(actual) ? actual : defecto) ? 0 : -1}">${v}</button>`).join('')}</div>
+      </div>`;
+    pick.pop.innerHTML = `<div class="hora__cols">${col('h', 'Hora', HORAS, h, '09')}${col('m', 'Min', MINUTOS, m, '00')}</div>`;
+    // Cada lista muestra centrada la opción elegida (o la sugerida)
+    $$('.hora__list', pick.pop).forEach(list => {
+      const op = $('[tabindex="0"]', list);
+      if (op) list.scrollTop = op.offsetTop - list.clientHeight / 2 + op.offsetHeight / 2;
+    });
+  }
+
+  function elegirHora(h, m, cerrar) {
+    const input = pick.input;
+    const [h0, m0] = (horaNorm(input.value) || '').split(':');
+    input.value = `${h || h0 || '09'}:${m || m0 || '00'}`;
+    disparar(input);
+    if (cerrar) { cerrarPicker(true); return; }
+    // Marca la elección sin repintar, para no mover el desplazamiento de las listas
+    $$('.hora__op', pick.pop).forEach(op => {
+      const v = op.dataset.h || op.dataset.m, actual = op.dataset.h ? input.value.slice(0, 2) : input.value.slice(3);
+      op.setAttribute('aria-selected', String(v === actual));
+    });
+  }
+
+  /* --- Eventos del selector --- */
+  function clicPicker(e) {
+    const b = e.target.closest('button');
+    if (!b || b.disabled) return;
+    if (b.dataset.cal === 'hoy') elegirFecha(HOY);
+    else if (b.dataset.cal) {
+      const conFoco = pick.pop.contains(document.activeElement);
+      moverMes(Number(b.dataset.cal));
+      if (conFoco) $(`[data-cal="${b.dataset.cal}"]`, pick.pop).focus();
+    }
+    else if (b.dataset.iso) elegirFecha(b.dataset.iso);
+    else if (b.dataset.h) elegirHora(b.dataset.h, '', false);
+    else if (b.dataset.m) elegirHora('', b.dataset.m, true);
+  }
+
+  function teclaPicker(e) {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cerrarPicker(true); return; }
+    const t = e.target;
+    if (t.classList.contains('cal__dia')) {
+      const saltos = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+      const d = parseISO(t.dataset.iso);
+      if (e.key in saltos) d.setDate(d.getDate() + saltos[e.key]);
+      else if (e.key === 'Home') d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+      else if (e.key === 'End') d.setDate(d.getDate() + (7 - d.getDay()) % 7);
+      else if (e.key === 'PageUp' || e.key === 'PageDown') d.setMonth(d.getMonth() + (e.key === 'PageUp' ? -1 : 1));
+      else return;
+      e.preventDefault();
+      pick.activo = isoOf(d);
+      pick.mes = new Date(d.getFullYear(), d.getMonth(), 1);
+      pintarCalendario();
+      enfocarPicker();
+    } else if (t.classList.contains('hora__op')) {
+      const list = t.parentElement, ops = $$('.hora__op', list), i = ops.indexOf(t);
+      let dest = null;
+      if (e.key === 'ArrowDown') dest = ops[Math.min(i + 1, ops.length - 1)];
+      else if (e.key === 'ArrowUp') dest = ops[Math.max(i - 1, 0)];
+      else if (e.key === 'Home') dest = ops[0];
+      else if (e.key === 'End') dest = ops[ops.length - 1];
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const otra = $(`.hora__list[data-col="${list.dataset.col === 'h' ? 'm' : 'h'}"]`, pick.pop);
+        dest = $('[tabindex="0"]', otra);
+      } else return;
+      e.preventDefault();
+      if (dest.parentElement === list) { ops.forEach(o => { o.tabIndex = -1; }); dest.tabIndex = 0; }
+      dest.focus();
+      dest.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  // Al salir del campo: completa el formato (9 → 09:00 · 3-12 → 03-12-2026)
+  function normalizarCampo(input) {
+    const v = input.value.trim();
+    if (!v) return;
+    const n = input.dataset.picker === 'fecha' ? fechaISO(v) : horaNorm(v);
+    const txt = n ? (input.dataset.picker === 'fecha' ? fechaTxt(n) : n) : null;
+    if (txt && txt !== input.value) { input.value = txt; disparar(input); }
+  }
+
+  document.addEventListener('click', e => {
+    const input = e.target.closest('.picker__input');
+    if (input) abrirPicker(input, false);
+  });
+  document.addEventListener('mousedown', e => {
+    const btn = e.target.closest('.picker__btn');
+    if (btn) {
+      e.preventDefault(); // el ícono no se lleva el foco
+      const input = $('.picker__input', btn.parentElement);
+      if (pick.input === input) cerrarPicker(true);
+      else { input.focus(); abrirPicker(input, false); }
+      return;
+    }
+    if (pick.pop && !pick.pop.contains(e.target) && e.target !== pick.input) cerrarPicker();
+  });
+  document.addEventListener('keydown', e => {
+    const input = e.target.closest && e.target.closest('.picker__input');
+    if (!input) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); abrirPicker(input, true); }
+    else if (e.key === 'Escape' && pick.input === input) { e.preventDefault(); e.stopPropagation(); cerrarPicker(); }
+  });
+  document.addEventListener('input', e => {
+    const input = e.target.closest && e.target.closest('.picker__input');
+    if (!input || !e.isTrusted) return;
+    // Solo los caracteres del formato
+    const limpio = input.value.replace(input.dataset.picker === 'fecha' ? /[^\d\-/.]/g : /[^\d:]/g, '');
+    if (limpio !== input.value) input.value = limpio;
+    // Con el selector abierto, lo escrito se refleja en él
+    if (pick.input !== input) return;
+    if (pick.tipo === 'fecha') {
+      const iso = fechaISO(input.value);
+      if (iso) { const d = parseISO(iso); pick.mes = new Date(d.getFullYear(), d.getMonth(), 1); pick.activo = iso; pintarCalendario(); }
+    } else if (horaNorm(input.value)) pintarHoras();
+  });
+  document.addEventListener('focusout', e => {
+    const input = e.target.closest && e.target.closest('.picker__input');
+    const destino = e.relatedTarget;
+    // Se cierra si el foco quedó fuera del campo y del selector. Se revisa después del
+    // evento: al repintar el calendario, el día enfocado se reemplaza por uno nuevo.
+    if (pick.pop) setTimeout(() => {
+      const a = document.activeElement;
+      if (pick.pop && a !== pick.input && !pick.pop.contains(a)) cerrarPicker();
+    });
+    if (input && !(destino && destino.closest('.pop'))) normalizarCampo(input);
+  }, true); // en captura: el formato se completa antes de validar
+  document.addEventListener('scroll', posicionarPicker, true);
+  window.addEventListener('resize', posicionarPicker);
+  $$('dialog').forEach(d => d.addEventListener('close', () => cerrarPicker()));
+
+  /* ------------------------------------------------------------------------
+     14. Sidebar, filtros, eventos e inicio
+     ------------------------------------------------------------------------ */
+  /* --- Tooltip de info: Esc lo oculta sin quitar el foco --- */
+  document.addEventListener('keydown', e => {
+    const tip = e.key === 'Escape' && e.target.closest && e.target.closest('.info-tip');
+    if (tip) tip.classList.add('info-tip--oculto');
+  });
+  document.addEventListener('mouseout', e => {
+    const tip = e.target.closest && e.target.closest('.info-tip');
+    if (tip && !tip.contains(e.relatedTarget)) tip.classList.remove('info-tip--oculto');
+  });
+  document.addEventListener('focusout', e => {
+    const tip = e.target.closest && e.target.closest('.info-tip');
+    if (tip) tip.classList.remove('info-tip--oculto');
+  });
+
   /* --- Sidebar --- */
   function setSidebar(contraido) {
     document.body.classList.toggle('sb-collapsed', contraido);
@@ -1173,20 +1487,26 @@
   const formFiltros = $('#filtros');
   function aplicarFiltros() {
     const f = formFiltros.elements;
-    Object.assign(state.filtros, { q: f.q.value, zona: f.zona.value, desde: f.desde.value, hasta: f.hasta.value });
-    f.hasta.min = f.desde.value || '';
-    f.desde.max = f.hasta.value || '';
-    $('#btn-limpiar').hidden = !Object.values(state.filtros).some(Boolean);
+    // Una fecha mal escrita no filtra: se marca en rojo hasta corregirla
+    const fecha = el => { const iso = fechaISO(el.value); el.setAttribute('aria-invalid', String(iso === null)); return iso || ''; };
+    const desde = fecha(f.desde), hasta = fecha(f.hasta);
+    Object.assign(state.filtros, { quien: f.quien.value, q: f.q.value, zona: f.zona.value, desde, hasta });
+    f.hasta.dataset.min = desde;
+    f.desde.dataset.max = hasta;
+    // "Ver" no es un filtro que se limpie: Limpiar deja la vista elegida
+    $('#btn-limpiar').hidden = ![state.filtros.q, state.filtros.zona, desde, hasta].some(Boolean);
     state.pagina = 1;
     renderTablas();
   }
   function limpiarFiltros() {
+    const quien = state.filtros.quien;
     formFiltros.reset();
+    formFiltros.elements.quien.value = quien;
     aplicarFiltros();
     $('#f-q').focus();
   }
   $('#f-q').addEventListener('input', debounce(aplicarFiltros, 200));
-  ['f-zona', 'f-desde', 'f-hasta'].forEach(id => $('#' + id).addEventListener('change', aplicarFiltros));
+  ['f-zona', 'f-desde', 'f-hasta', 'f-quien-mias', 'f-quien-todas'].forEach(id => $('#' + id).addEventListener('change', aplicarFiltros));
   $('#btn-limpiar').addEventListener('click', limpiarFiltros);
   $('#pager').addEventListener('click', e => {
     const b = e.target.closest('[data-pagina]');
@@ -1239,7 +1559,7 @@
     }));
     tb.addEventListener('focusout', e => {
       const form = e.target.closest('form.detail');
-      if (!form || !e.target.name) return;
+      if (!form || !e.target.name || (e.relatedTarget && e.relatedTarget.closest('.pop'))) return;
       tocados.get(form).add(e.target.name);
       if (e.target.name === 'a_inicio') tocados.get(form).add('a_fin');
       validarEnVivo(form);
@@ -1296,6 +1616,7 @@
     }
   });
   formNuevo.addEventListener('change', e => {
+    if (e.target.name === 'accesos') actualizarBotonCrear();
     if (e.target.name === 'accesos' && nuevo.enviado) mostrarErrores(formNuevo, validarNuevo(), new Set(['accesos']));
     if (e.target.name === 'a_cluster') $('#n-compromiso').innerHTML = compromisoHTML(HOY, e.target.value);
   });
@@ -1307,7 +1628,7 @@
     mostrarErrores(formNuevo, validarNuevo(), nuevo.enviado ? null : nuevo.tocados);
   }
   formNuevo.addEventListener('focusout', e => {
-    if (!e.target.name || e.target.name === 'accesos') return;
+    if (!e.target.name || e.target.name === 'accesos' || (e.relatedTarget && e.relatedTarget.closest('.pop'))) return;
     nuevo.tocados.add(e.target.name);
     if (e.target.name === 'a_inicio') nuevo.tocados.add('a_fin');
     validarNuevoEnVivo();
@@ -1350,7 +1671,7 @@
         if (simular === 'corte') {
           const pasan = d.filter(t => t.centro.estado === 'enviado' && enBandeja(t)).length;
           state.corte = ahora();
-          setTimeout(() => toast(`Simulación de cambio de día: ${pasan} ${plural(pasan, 'agenda enviada pasó', 'agendas enviadas pasaron')} al historial. En la bandeja quedan las pendientes y con error.`, 'info'), 300);
+          setTimeout(() => toast(`Simulación de cambio de día: ${pasan} ${plural(pasan, 'agenda pasó', 'agendas pasaron')} a Agendas enviadas.`, 'info'), 300);
         }
       })
       .catch(() => { state.error = true; })

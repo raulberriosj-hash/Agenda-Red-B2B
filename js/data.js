@@ -1,8 +1,8 @@
 /* ==========================================================================
    DATOS SIMULADOS
    Proyectos (lo que devolvería GetBacklog), accesos (Base de Accesos) y
-   52 agendas en el historial (algunas con historial de cambios). La bandeja
-   de hoy parte vacía: el gestor aún no ha agendado nada. Las fechas son relativas a hoy para
+   55 agendas enviadas de tres gestores (algunas con historial de cambios).
+   La bandeja de hoy de Camila Rojas parte vacía: aún no ha agendado nada. Las fechas son relativas a hoy para
    que el prototipo siempre tenga agendas pasadas, de hoy y futuras.
    Los campos de sistema (razón social, calle, comuna, región) van en
    mayúsculas, como llegan desde las plataformas de origen.
@@ -105,16 +105,33 @@
       comentario: '',
       historial: [], // { fecha, usuario, campo, antes, despues }
       centro: Object.assign({ mensaje: '', fecha: '', enAgenda: false }, centro),
-      modificado: { usuario: 'Camila Rojas', fecha: marca(solicitud, '11:30') }
+      modificado: { usuario: 'Camila Rojas', fecha: marca(solicitud, '11:30') },
+      creador: 'Camila Rojas' // gestor que la agendó (filtro "Mis agendas")
     };
-    return Object.assign(base, extra || {});
+    const ag = Object.assign(base, extra || {});
+    // Sin creador explícito, la agendó quien la modificó por última vez
+    if (!(extra && extra.creador)) ag.creador = ag.modificado.usuario;
+    return ag;
   }
+  const GESTORES = ['Camila Rojas', 'Javier Paredes', 'Matías Fuentes']; // Camila Rojas es la usuaria del prototipo
   const enviado = (dia, hora) => ({ estado: 'enviado', fecha: marca(dia, hora), enAgenda: true });
 
   function h(fecha, usuario, campo, antes, despues) { return { fecha, usuario, campo, antes, despues }; }
 
   const TRABAJOS = [
     /* --- Bandeja de hoy: parte vacía; la llena el gestor con "Agendar nuevo trabajo" */
+
+    /* --- Enviadas hoy por otros gestores: se ven con el filtro "Todas" ---- */
+    t('TR-1049', 'A32', 4, '09:00', '13:00', 'C2', 0, enviado(0, '08:10'), {
+      modificado: { usuario: 'Javier Paredes', fecha: marca(0, '08:05') },
+      comentario: 'Confirmar acceso a la sala técnica con el contacto.'
+    }),
+    t('TR-1050', 'A13', 2, '14:00', '18:00', 'C1', 0, enviado(0, '08:30'), {
+      modificado: { usuario: 'Matías Fuentes', fecha: marca(0, '08:20') }
+    }),
+    t('TR-1051', 'A81', 3, '09:00', '11:00', 'C1', 0, enviado(0, '08:50'), {
+      modificado: { usuario: 'Javier Paredes', fecha: marca(0, '08:40') }
+    }),
 
     /* --- Historial: enviadas en días anteriores -------------------------- */
     t('TR-1031', 'A11', -6, '09:00', '13:00', 'C1', -9, enviado(-8, '10:10'), {
@@ -176,8 +193,10 @@
       const solicitud = -10 - Math.floor(i * 1.5);   // cada 1 o 2 días hacia atrás
       const cluster = i % 3 === 0 ? 'C2' : 'C1';
       const [inicio, fin] = horarios[i % horarios.length];
+      const gestor = GESTORES[i % GESTORES.length];
       return t('TR-' + (1030 - i), ids[(i * 5) % ids.length], solicitud + 2 + (i % 4), inicio, fin, cluster, solicitud,
-        enviado(solicitud + (i % 2), i % 2 ? '09:10' : '16:40'), { comentario: notas[i % notas.length] });
+        enviado(solicitud + (i % 2), i % 2 ? '09:10' : '16:40'),
+        { comentario: notas[i % notas.length], modificado: { usuario: gestor, fecha: marca(solicitud, '11:30') } });
     });
   }
 

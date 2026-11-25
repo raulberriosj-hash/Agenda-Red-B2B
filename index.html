@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Gestión de trabajos programados B2B</title>
+  <title>Agenda de red</title>
   <link rel="stylesheet" href="inelcom-design-system/tokens.css">
-  <link rel="stylesheet" href="css/app.css?v=37">
+  <link rel="stylesheet" href="css/app.css?v=42">
 </head>
 <body class="body-small">
 
@@ -78,7 +78,7 @@
         <span class="profile__avatar" aria-hidden="true">CR</span>
         <div class="profile__text">
           <div class="profile__name">Camila Rojas</div>
-          <!-- Rol simulado: Jefatura puede eliminar trabajos -->
+          <!-- Rol simulado: Jefatura puede eliminar agendas -->
           <div class="profile__role">
             <svg class="ic" aria-hidden="true"><use href="#i-user-cog"/></svg>
             <label for="rol" class="sr-only">Rol</label>
@@ -117,7 +117,7 @@
        =================================================================== -->
   <main id="main" class="page">
     <div class="page__head">
-      <h1 class="heading-h3">Gestión de trabajos programados B2B</h1>
+      <h1 class="heading-h3">Agenda de red</h1>
     </div>
 
     <!-- --- Indicadores globales (estados del Centro de operaciones) --- -->
@@ -129,7 +129,9 @@
     <section class="card table-card" aria-labelledby="bandeja-title">
       <div class="table-card__head">
         <div class="table-card__titles">
-          <h2 id="bandeja-title" class="heading-h4">Agendar trabajos</h2>
+          <h2 id="bandeja-title" class="heading-h4 card-title">
+            <span class="card-title__icon card-title__icon--brand" aria-hidden="true"><svg class="ic"><use href="#i-calendar-plus"/></svg></span>
+            Agendar trabajos</h2>
           <p class="body-xsmall text-tertiary" id="bandeja-sub"></p>
         </div>
         <div class="table-card__tools">
@@ -148,7 +150,12 @@
       <div class="envio" id="envio">
         <svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>
         <p id="envio-text" class="body-small"></p>
-        <p class="body-xsmall text-tertiary envio__nota">El sistema envía las agendas pendientes al Centro de operaciones cada 10 minutos.</p>
+        <span class="info-tip">
+          <button type="button" class="info-tip__btn" aria-label="Cómo funciona el envío automático" aria-describedby="envio-tip">
+            <svg class="ic" aria-hidden="true"><use href="#i-info"/></svg>
+          </button>
+          <span class="info-tip__bubble body-xsmall" role="tooltip" id="envio-tip">El sistema envía las agendas pendientes al Centro de operaciones cada 10 minutos.</span>
+        </span>
       </div>
 
       <div class="table-scroll">
@@ -173,17 +180,17 @@
           <tbody id="tbody-bandeja" class="tbody-agendas"></tbody>
         </table>
       </div>
-      <div class="table-foot body-xsmall text-tertiary" id="foot-bandeja" aria-live="polite"></div>
     </section>
 
     <!-- ===================================================================
-         HISTORIAL · agendas enviadas en días anteriores
+         AGENDAS ENVIADAS · historial de días anteriores
          =================================================================== -->
     <section class="card table-card" aria-labelledby="historial-title">
       <div class="table-card__head">
         <div class="table-card__titles">
-          <h2 id="historial-title" class="heading-h4">Historial</h2>
-          <p class="body-xsmall text-tertiary">Agendas enviadas en días anteriores. Si editas una, vuelve a Pendiente de envío y pasa a la bandeja.</p>
+          <h2 id="historial-title" class="heading-h4 card-title">
+            <span class="card-title__icon" aria-hidden="true"><svg class="ic"><use href="#i-calendar-clock"/></svg></span>
+            Agendas enviadas</h2>
         </div>
         <div class="table-card__tools">
           <button type="button" class="btn btn--secondary btn--sm" id="btn-exportar">
@@ -194,6 +201,13 @@
       </div>
       <!-- --- Búsqueda y filtros --- -->
       <form class="toolbar" id="filtros" role="search" onsubmit="return false">
+        <fieldset class="toolbar__field">
+          <legend>Ver</legend>
+          <div class="segmented">
+            <input type="radio" id="f-quien-mias" name="quien" value="mias" checked><label for="f-quien-mias">Mis agendas</label>
+            <input type="radio" id="f-quien-todas" name="quien" value="todas"><label for="f-quien-todas">Todas</label>
+          </div>
+        </fieldset>
         <div class="toolbar__field toolbar__search">
           <label for="f-q">Buscar</label>
           <div class="search">
@@ -212,16 +226,24 @@
         </div>
         <fieldset class="toolbar__field toolbar__range">
           <legend>Fecha agendada</legend>
-          <input id="f-desde" name="desde" type="date" class="input" aria-label="Fecha desde">
+          <div class="picker">
+            <input id="f-desde" name="desde" type="text" class="input picker__input" aria-label="Fecha desde" placeholder="dd-mm-aaaa"
+                   maxlength="10" inputmode="numeric" autocomplete="off" data-picker="fecha" aria-haspopup="dialog" aria-expanded="false">
+            <button type="button" class="picker__btn" tabindex="-1" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="#i-calendar"/></svg></button>
+          </div>
           <span aria-hidden="true" class="text-tertiary">a</span>
-          <input id="f-hasta" name="hasta" type="date" class="input" aria-label="Fecha hasta">
+          <div class="picker">
+            <input id="f-hasta" name="hasta" type="text" class="input picker__input" aria-label="Fecha hasta" placeholder="dd-mm-aaaa"
+                   maxlength="10" inputmode="numeric" autocomplete="off" data-picker="fecha" aria-haspopup="dialog" aria-expanded="false">
+            <button type="button" class="picker__btn" tabindex="-1" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="#i-calendar"/></svg></button>
+          </div>
         </fieldset>
         <button type="button" id="btn-limpiar" class="btn btn--ghost btn--sm" hidden>Limpiar filtros</button>
       </form>
 
       <div class="table-scroll">
         <table class="table" id="tabla-historial">
-          <caption class="sr-only">Historial de agendas enviadas. Usa el botón de cada fila para ver y editar el detalle.</caption>
+          <caption class="sr-only">Agendas enviadas en días anteriores. Usa el botón de cada fila para ver y editar el detalle.</caption>
           <colgroup>
             <col class="col-exp"><col class="col-fecha"><col><col class="col-acceso">
             <col class="col-cliente"><col class="col-comuna"><col class="col-compromiso"><col class="col-centro">
@@ -244,18 +266,18 @@
       <div class="table-foot body-xsmall text-tertiary">
         <p id="foot-historial" aria-live="polite"></p>
         <!-- --- Paginación: 10 agendas por página --- -->
-        <nav class="pager" id="pager" aria-label="Páginas del historial"></nav>
+        <nav class="pager" id="pager" aria-label="Páginas de agendas enviadas"></nav>
       </div>
     </section>
   </main>
 
   <!-- ===================================================================
-       DIÁLOGO: NUEVA AGENDA
+       DIÁLOGO: AGENDAR NUEVO TRABAJO
        =================================================================== -->
   <dialog id="dlg-nuevo" class="dialog" aria-labelledby="dlg-nuevo-title">
     <form id="form-nuevo" class="dialog__form" novalidate>
       <header class="dialog__head">
-        <h2 id="dlg-nuevo-title" class="heading-h4">Nueva agenda</h2>
+        <h2 id="dlg-nuevo-title" class="heading-h4">Agendar nuevo trabajo</h2>
         <button type="button" class="icon-btn" data-close aria-label="Cerrar">
           <svg class="ic" aria-hidden="true"><use href="#i-x"/></svg>
         </button>
@@ -271,9 +293,8 @@
                 <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
                 <input id="cb-input" class="input" type="text" role="combobox" autocomplete="off"
                        aria-autocomplete="list" aria-expanded="false" aria-controls="cb-list"
-                       aria-describedby="cb-hint proyecto-err" placeholder="Código, razón social o segmento (ej. CHI-0047 o Farmacias)">
+                       aria-describedby="proyecto-err" placeholder="Código, razón social o segmento (ej. CHI-0047 o Farmacias)">
               </div>
-              <p id="cb-hint" class="field__hint">Datos desde GetBacklog.</p>
               <ul id="cb-list" class="listbox" role="listbox" aria-label="Proyectos encontrados" hidden></ul>
               <span id="cb-status" class="sr-only" aria-live="polite"></span>
             </div>
@@ -299,7 +320,6 @@
       </div>
 
       <footer class="dialog__foot">
-        <p class="body-xsmall text-tertiary"><span class="req" aria-hidden="true">*</span> Obligatorio. La agenda queda en Pendiente de envío y sale en el próximo envío automático.</p>
         <div class="dialog__actions">
           <button type="button" class="btn btn--ghost" data-close>Cancelar</button>
           <button type="submit" class="btn btn--primary" value="crear" id="btn-crear">Crear agenda</button>
@@ -314,10 +334,7 @@
   <dialog id="dlg-carga" class="dialog dialog--carga" aria-labelledby="dlg-carga-title">
     <div class="dialog__form">
       <header class="dialog__head">
-        <div>
-          <h2 id="dlg-carga-title" class="heading-h4">Enviar ahora al Centro de operaciones</h2>
-          <p class="body-xsmall text-tertiary">El RPA carga los trabajos en Agenda de Red y devuelve el resultado de cada uno.</p>
-        </div>
+        <h2 id="dlg-carga-title" class="heading-h4">Enviar ahora al Centro de operaciones</h2>
         <button type="button" class="icon-btn" data-close aria-label="Cerrar">
           <svg class="ic" aria-hidden="true"><use href="#i-x"/></svg>
         </button>
@@ -345,8 +362,8 @@
 
   <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
-  <script src="js/data.js?v=37"></script>
-  <script src="js/mocks.js?v=37"></script>
-  <script src="js/app.js?v=37"></script>
+  <script src="js/data.js?v=42"></script>
+  <script src="js/mocks.js?v=42"></script>
+  <script src="js/app.js?v=42"></script>
 </body>
 </html>
