@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agenda de red</title>
+  <link rel="stylesheet" href="inelcom-design-system/tokens.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body class="body-small">
+
+  <!-- ===================================================================
+       ÍCONOS (sprite SVG, trazo con currentColor)
+       =================================================================== -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></symbol>
+    <symbol id="i-hourglass" viewBox="0 0 24 24"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/></symbol>
+    <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+    <symbol id="i-map-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></symbol>
+    <symbol id="i-calendar-plus" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M10 16h4"/><path d="M12 14v4"/></symbol>
+    <symbol id="i-calendar-clock" viewBox="0 0 24 24"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-alert-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></symbol>
+    <symbol id="i-alert-triangle" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+    <symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-calendar-range" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M17 14h-6"/><path d="M13 18H7"/><path d="M7 14h.01"/><path d="M17 18h.01"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/></symbol>
+    <symbol id="i-loader" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+    <symbol id="i-building" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></symbol>
+    <symbol id="i-dashboard" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+    <symbol id="i-tower" viewBox="0 0 24 24"><path d="M4.9 16.1C1 12.2 1 5.8 4.9 1.9"/><path d="M7.8 4.7a6.14 6.14 0 0 0-.8 7.5"/><circle cx="12" cy="9" r="2"/><path d="M16.2 4.8c2 2 2.26 5.11.8 7.47"/><path d="M19.1 1.9a9.96 9.96 0 0 1 0 14.1"/><path d="M9.5 18h5"/><path d="m8 22 4-11 4 11"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-user-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.66V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.66"/></symbol>
+    <symbol id="i-user-cog" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6"/><circle cx="18" cy="18" r="2.5"/><path d="M18 14v1.5M18 20.5V22M21.5 18H20M16 18h-1.5"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></symbol>
+  </svg>
+
+  <a class="skip-link" href="#main">Saltar al contenido</a>
+
+  <!-- ===================================================================
+       SIDEBAR
+       =================================================================== -->
+  <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
+    <div class="sidebar__inner">
+      <div class="sidebar__brand">
+        <img class="sidebar__logo" src="assets/img/logo-inelcom.png" alt="Inelcom Chile">
+        <span class="sidebar__mark" aria-hidden="true"></span>
+      </div>
+
+      <div class="profile">
+        <span class="profile__avatar" id="profile-avatar" aria-hidden="true"></span>
+        <div class="profile__text">
+          <div class="profile__name" id="profile-name"></div>
+          <div class="profile__role">
+            <svg class="ic" aria-hidden="true"><use href="#i-user-cog"/></svg>
+            <span id="profile-rol"></span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="sidenav" aria-label="Secciones">
+        <ul>
+          <li><a href="#" class="sidenav__link" aria-current="page"><svg class="ic" aria-hidden="true"><use href="#i-calendar-range"/></svg><span class="sidenav__label">Agenda de red</span></a></li>
+          <li><a href="#" class="sidenav__link"><svg class="ic" aria-hidden="true"><use href="#i-dashboard"/></svg><span class="sidenav__label">Cuadro de mando</span></a></li>
+          <li><a href="#" class="sidenav__link"><svg class="ic" aria-hidden="true"><use href="#i-folder"/></svg><span class="sidenav__label">Proyectos</span></a></li>
+          <li><a href="#" class="sidenav__link"><svg class="ic" aria-hidden="true"><use href="#i-tower"/></svg><span class="sidenav__label">Accesos</span></a></li>
+          <li><a href="#" class="sidenav__link"><svg class="ic" aria-hidden="true"><use href="#i-history"/></svg><span class="sidenav__label">Historial de envíos</span></a></li>
+          <li><a href="#" class="sidenav__link"><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg><span class="sidenav__label">Administración</span></a></li>
+        </ul>
+      </nav>
+
+      <div class="sidebar__foot">
+        <button type="button" class="sidebar__icon-btn" aria-label="Mi perfil"><svg class="ic" aria-hidden="true"><use href="#i-user-circle"/></svg></button>
+        <button type="button" class="sidebar__icon-btn" aria-label="Cerrar sesión"><svg class="ic" aria-hidden="true"><use href="#i-logout"/></svg></button>
+      </div>
+    </div>
+    <button type="button" class="sidebar__toggle" id="sidebar-toggle" aria-expanded="true" aria-controls="sidebar" aria-label="Contraer menú">
+      <svg class="ic" aria-hidden="true"><use href="#i-chevron-left"/></svg>
+    </button>
+  </aside>
+
+  <!-- ===================================================================
+       CONTENIDO
+       =================================================================== -->
+  <main id="main" class="page">
+    <div class="page__head">
+      <h1 class="heading-h3">Agenda de red</h1>
+    </div>
+
+    <section class="kpis" id="kpis" aria-label="Indicadores globales"></section>
+
+    <!-- ===================================================================
+         AGENDAR TRABAJOS · bandeja del día
+         =================================================================== -->
+    <section class="card table-card" aria-labelledby="bandeja-title">
+      <div class="table-card__head">
+        <div class="table-card__titles">
+          <h2 id="bandeja-title" class="heading-h4 card-title">
+            <span class="card-title__icon card-title__icon--brand" aria-hidden="true"><svg class="ic"><use href="#i-calendar-plus"/></svg></span>
+            Agendar trabajos</h2>
+          <p class="body-xsmall text-tertiary" id="bandeja-sub"></p>
+        </div>
+        <div class="table-card__tools">
+          <button type="button" id="btn-enviar" class="btn btn--secondary">
+            <svg class="ic" aria-hidden="true"><use href="#i-send"/></svg>
+            Enviar ahora
+          </button>
+          <button type="button" id="btn-nuevo" class="btn btn--primary">
+            <svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>
+            Agendar nuevo trabajo
+          </button>
+        </div>
+      </div>
+
+      <div class="envio" id="envio">
+        <svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>
+        <p id="envio-text" class="body-small"></p>
+        <span class="info-tip">
+          <button type="button" class="info-tip__btn" aria-label="Cómo funciona el envío automático" aria-describedby="envio-tip">
+            <svg class="ic" aria-hidden="true"><use href="#i-info"/></svg>
+          </button>
+          <span class="info-tip__bubble body-xsmall" role="tooltip" id="envio-tip">El sistema envía las agendas pendientes al Centro de operaciones cada 10 minutos.</span>
+        </span>
+      </div>
+
+      <div class="table-scroll">
+        <table class="table" id="tabla-bandeja">
+          <caption class="sr-only">Bandeja de hoy. Usa el botón de cada fila para ver y editar el detalle.</caption>
+          <colgroup>
+            <col class="col-exp"><col class="col-fecha"><col><col class="col-acceso">
+            <col class="col-cliente"><col class="col-comuna"><col class="col-compromiso"><col class="col-centro">
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col"><span class="sr-only">Detalle</span></th>
+              <th scope="col">Fecha agendada</th>
+              <th scope="col">Proyecto</th>
+              <th scope="col">Acceso</th>
+              <th scope="col">Cliente</th>
+              <th scope="col">Comuna</th>
+              <th scope="col">Fecha compromiso</th>
+              <th scope="col">Centro de operaciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-bandeja" class="tbody-agendas"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         AGENDAS ENVIADAS
+         =================================================================== -->
+    <section class="card table-card" aria-labelledby="historial-title">
+      <div class="table-card__head">
+        <div class="table-card__titles">
+          <h2 id="historial-title" class="heading-h4 card-title">
+            <span class="card-title__icon" aria-hidden="true"><svg class="ic"><use href="#i-calendar-clock"/></svg></span>
+            Agendas enviadas</h2>
+        </div>
+        <div class="table-card__tools">
+          <button type="button" class="btn btn--secondary btn--sm" id="btn-exportar">
+            <svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>
+            <span>Exportar</span>
+          </button>
+        </div>
+      </div>
+      <form class="toolbar" id="filtros" role="search" onsubmit="return false">
+        <fieldset class="toolbar__field">
+          <legend>Ver</legend>
+          <div class="segmented">
+            <input type="radio" id="f-quien-mias" name="quien" value="mias" checked><label for="f-quien-mias">Mis agendas</label>
+            <input type="radio" id="f-quien-todas" name="quien" value="todas"><label for="f-quien-todas">Todas</label>
+          </div>
+        </fieldset>
+        <div class="toolbar__field toolbar__search">
+          <label for="f-q">Buscar</label>
+          <div class="search">
+            <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
+            <input id="f-q" name="q" type="search" class="input" placeholder="ID, proyecto, acceso, razón social o comuna" autocomplete="off">
+          </div>
+        </div>
+        <div class="toolbar__field">
+          <label for="f-zona">Zona</label>
+          <div class="select">
+            <select id="f-zona" name="zona" class="input">
+              <option value="">Todas</option>
+            </select>
+            <svg class="ic" aria-hidden="true"><use href="#i-chevron-down"/></svg>
+          </div>
+        </div>
+        <fieldset class="toolbar__field toolbar__range">
+          <legend>Fecha agendada</legend>
+          <div class="picker">
+            <input id="f-desde" name="desde" type="text" class="input picker__input" aria-label="Fecha desde" placeholder="dd-mm-aaaa"
+                   maxlength="10" inputmode="numeric" autocomplete="off" data-picker="fecha" aria-haspopup="dialog" aria-expanded="false">
+            <button type="button" class="picker__btn" tabindex="-1" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="#i-calendar"/></svg></button>
+          </div>
+          <span aria-hidden="true" class="text-tertiary">a</span>
+          <div class="picker">
+            <input id="f-hasta" name="hasta" type="text" class="input picker__input" aria-label="Fecha hasta" placeholder="dd-mm-aaaa"
+                   maxlength="10" inputmode="numeric" autocomplete="off" data-picker="fecha" aria-haspopup="dialog" aria-expanded="false">
+            <button type="button" class="picker__btn" tabindex="-1" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="#i-calendar"/></svg></button>
+          </div>
+        </fieldset>
+        <button type="button" id="btn-limpiar" class="btn btn--ghost btn--sm" hidden>Limpiar filtros</button>
+      </form>
+
+      <div class="table-scroll">
+        <table class="table" id="tabla-historial">
+          <caption class="sr-only">Agendas enviadas. Usa el botón de cada fila para ver y editar el detalle.</caption>
+          <colgroup>
+            <col class="col-exp"><col class="col-fecha"><col><col class="col-acceso">
+            <col class="col-cliente"><col class="col-comuna"><col class="col-compromiso"><col class="col-centro">
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col"><span class="sr-only">Detalle</span></th>
+              <th scope="col">Fecha agendada</th>
+              <th scope="col">Proyecto</th>
+              <th scope="col">Acceso</th>
+              <th scope="col">Cliente</th>
+              <th scope="col">Comuna</th>
+              <th scope="col">Fecha compromiso</th>
+              <th scope="col">Centro de operaciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-historial" class="tbody-agendas"></tbody>
+        </table>
+      </div>
+      <div class="table-foot body-xsmall text-tertiary">
+        <p id="foot-historial" aria-live="polite"></p>
+        <nav class="pager" id="pager" aria-label="Páginas de agendas enviadas"></nav>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===================================================================
+       DIÁLOGO: AGENDAR NUEVO TRABAJO
+       =================================================================== -->
+  <dialog id="dlg-nuevo" class="dialog" aria-labelledby="dlg-nuevo-title">
+    <form id="form-nuevo" class="dialog__form" novalidate>
+      <header class="dialog__head">
+        <h2 id="dlg-nuevo-title" class="heading-h4">Agendar nuevo trabajo</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Cerrar">
+          <svg class="ic" aria-hidden="true"><use href="#i-x"/></svg>
+        </button>
+      </header>
+
+      <div class="dialog__body">
+        <section class="step">
+          <h3 class="step__title"><span class="step__n" aria-hidden="true">1</span>Proyecto</h3>
+          <div class="field" data-field="proyecto">
+            <div id="cb-wrap" class="combobox">
+              <label for="cb-input">Busca el proyecto <span class="req" aria-hidden="true">*</span></label>
+              <div class="search">
+                <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
+                <input id="cb-input" class="input" type="text" role="combobox" autocomplete="off"
+                       aria-autocomplete="list" aria-expanded="false" aria-controls="cb-list"
+                       aria-describedby="proyecto-err" placeholder="Código, razón social o segmento (ej. CHI-0047 o Farmacias)">
+              </div>
+              <ul id="cb-list" class="listbox" role="listbox" aria-label="Proyectos encontrados" hidden></ul>
+              <span id="cb-status" class="sr-only" aria-live="polite"></span>
+            </div>
+            <div id="cb-selected" class="picked" hidden></div>
+            <p class="field__error" id="proyecto-err" hidden></p>
+          </div>
+        </section>
+
+        <section class="step" id="step-accesos">
+          <h3 class="step__title"><span class="step__n" aria-hidden="true">2</span>Accesos</h3>
+          <fieldset class="field" data-field="accesos" aria-describedby="accesos-hint accesos-err">
+            <legend class="sr-only">Accesos del proyecto</legend>
+            <p id="accesos-hint" class="field__hint">Se crea una agenda por cada acceso seleccionado.</p>
+            <div id="accesos-list" class="accesos"></div>
+            <p class="field__error" id="accesos-err" hidden></p>
+          </fieldset>
+        </section>
+
+        <section class="step">
+          <h3 class="step__title"><span class="step__n" aria-hidden="true">3</span>Agendamiento</h3>
+          <div class="grid-3" id="nuevo-campos"></div>
+        </section>
+      </div>
+
+      <footer class="dialog__foot">
+        <div class="dialog__actions">
+          <button type="button" class="btn btn--ghost" data-close>Cancelar</button>
+          <button type="submit" class="btn btn--primary" value="crear" id="btn-crear">Crear agenda</button>
+        </div>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- ===================================================================
+       DIÁLOGO: ENVIAR AHORA AL CENTRO DE OPERACIONES
+       =================================================================== -->
+  <dialog id="dlg-carga" class="dialog dialog--carga" aria-labelledby="dlg-carga-title">
+    <div class="dialog__form">
+      <header class="dialog__head">
+        <h2 id="dlg-carga-title" class="heading-h4">Enviar ahora al Centro de operaciones</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Cerrar">
+          <svg class="ic" aria-hidden="true"><use href="#i-x"/></svg>
+        </button>
+      </header>
+      <div class="dialog__body" id="carga-body"></div>
+      <footer class="dialog__foot" id="carga-foot"></footer>
+    </div>
+  </dialog>
+
+  <!-- ===================================================================
+       DIÁLOGO: ELIMINAR AGENDA (solo Jefatura)
+       =================================================================== -->
+  <dialog id="dlg-eliminar" class="dialog dialog--sm" aria-labelledby="dlg-eliminar-title" aria-describedby="dlg-eliminar-body">
+    <div class="dialog__form">
+      <header class="dialog__head">
+        <h2 id="dlg-eliminar-title" class="heading-h4"></h2>
+        <button type="button" class="icon-btn" data-close aria-label="Cerrar">
+          <svg class="ic" aria-hidden="true"><use href="#i-x"/></svg>
+        </button>
+      </header>
+      <div class="dialog__body" id="dlg-eliminar-body"></div>
+      <footer class="dialog__foot" id="dlg-eliminar-foot"></footer>
+    </div>
+  </dialog>
+
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+  <!-- Datos de ejemplo: quitar data.js y mocks.js al conectar el backend (ver README.md) -->
+  <script src="js/data.js"></script>
+  <script src="js/mocks.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

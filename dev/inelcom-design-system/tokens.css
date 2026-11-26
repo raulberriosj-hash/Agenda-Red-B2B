@@ -1,0 +1,214 @@
+/* Inelcom Design System — tokens CSS generados desde tokens.json (tema claro). */
+/* Fuente de verdad: tokens.json y README.md. No editar a mano; regenerar si cambian. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Color: escalas primitivas y capas semánticas */
+  --neutral-0: #ffffff;
+  --neutral-50: #f8fbfc;
+  --neutral-100: #f1f7f9;
+  --neutral-200: #e3ebef;
+  --neutral-300: #ccdae0;
+  --neutral-400: #96acb6;
+  --neutral-500: #6b8490;
+  --neutral-600: #495d67;
+  --neutral-700: #354953;
+  --neutral-800: #1f303a;
+  --neutral-900: #101e29;
+  --neutral-950: #030c16;
+  --corporate-50: #ebffff;
+  --corporate-100: #cefdff;
+  --corporate-200: #a2f9ff;
+  --corporate-300: #63f1fd;
+  --corporate-400: #1ce0f4;
+  --corporate-500: #00bfd6;
+  --corporate-600: #039bb7;
+  --corporate-700: #0a7c94;
+  --corporate-800: #126378;
+  --corporate-900: #145265;
+  --corporate-950: #063646;
+  --support-50: #ecefff;
+  --support-100: #dde2ff;
+  --support-200: #c2c9ff;
+  --support-300: #9ca5ff;
+  --support-400: #7577ff;
+  --support-500: #6c63ff;
+  --support-600: #5036f5;
+  --support-700: #452ad8;
+  --support-800: #3825ae;
+  --support-900: #312689;
+  --support-950: #1e1650;
+  --blue-support-50: #f4fcff;
+  --blue-support-100: #e9f8fe;
+  --blue-support-200: #c9eefd;
+  --blue-support-300: #9be0fc;
+  --blue-support-400: #4eafde;
+  --blue-support-500: #357eb2;
+  --blue-support-600: #245a93;
+  --blue-support-700: #194573;
+  --blue-support-900: #061b37;
+  --success-50: #f0fdf4;
+  --success-100: #dcfce7;
+  --success-200: #bbf7d0;
+  --success-300: #86efac;
+  --success-400: #4ade80;
+  --success-500: #22c55e;
+  --success-600: #16a34a;
+  --success-700: #15803d;
+  --success-800: #166534;
+  --success-900: #14532d;
+  --success-950: #052e16;
+  --warning-50: #fef9ec;
+  --warning-100: #fdedc8;
+  --warning-200: #fada8d;
+  --warning-300: #f7c052;
+  --warning-400: #f5a623;
+  --warning-500: #ef8711;
+  --warning-600: #d3630c;
+  --warning-700: #af440e;
+  --warning-800: #8f3411;
+  --warning-900: #752c12;
+  --warning-950: #431505;
+  --error-50: #fef2f2;
+  --error-100: #fee2e2;
+  --error-200: #ffc9c9;
+  --error-300: #fda4a4;
+  --error-400: #fa6f6f;
+  --error-500: #f24b4b;
+  --error-600: #de2424;
+  --error-700: #bb1a1a;
+  --error-800: #9b1919;
+  --error-900: #801c1c;
+  --error-950: #460909;
+  --background-primary: var(--neutral-0);
+  --background-secondary: var(--neutral-50);
+  --background-tertiary: var(--neutral-100);
+  --background-quaternary: var(--neutral-200);
+  --background-inverse: var(--neutral-900);
+  --background-brand: var(--corporate-500);
+  --background-brand-subtle: var(--corporate-50);
+  --background-brand-strong: var(--corporate-700);
+  --background-success: var(--success-50);
+  --background-warning: var(--warning-50);
+  --background-error: var(--error-50);
+  --background-info: var(--support-50);
+  --text-primary: var(--neutral-800);
+  --text-secondary: var(--neutral-700);
+  --text-tertiary: var(--neutral-600);
+  --text-disabled: var(--neutral-400);
+  --text-inverse: var(--neutral-0);
+  --text-brand: var(--corporate-800);
+  --text-success: var(--success-700);
+  --text-warning: var(--warning-700);
+  --text-error: var(--error-700);
+  --text-info: var(--support-700);
+  --border-default: var(--neutral-200);
+  --border-strong: var(--neutral-300);
+  --border-subtle: var(--neutral-100);
+  --border-brand: var(--corporate-500);
+  --border-focus: var(--corporate-400);
+  --border-error: var(--error-500);
+  --border-success: var(--success-500);
+  --border-info: var(--support-500);
+  --border-warning: var(--warning-500);
+  --interactive-primary: var(--corporate-500);
+  --interactive-primary-hover: var(--corporate-600);
+  --interactive-primary-active: var(--corporate-700);
+  --interactive-secondary: var(--support-500);
+  --interactive-secondary-hover: var(--support-600);
+  --interactive-secondary-pressed: var(--support-700);
+  --interactive-danger: var(--error-500);
+  --interactive-danger-hover: var(--error-600);
+  --interactive-danger-pressed: var(--error-800);
+  --interactive-success: var(--success-500);
+  --interactive-success-hover: var(--success-600);
+  --interactive-success-pressed: var(--success-700);
+  --icon-primary: var(--neutral-700);
+  --icon-secondary: var(--neutral-500);
+  --icon-disabled: var(--neutral-400);
+  --icon-inverse: var(--neutral-0);
+  --icon-brand: var(--corporate-500);
+  --icon-success: var(--success-600);
+  --icon-warning: var(--warning-600);
+  --icon-error: var(--error-600);
+
+  /* Espaciado (grilla de 4px) */
+  --space-half: 2px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* Radios */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-xl: 32px;
+  --radius-pill: 999px;
+
+  /* Sombra única */
+  --shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.1), 0px 2px 4px -2px rgba(0, 0, 0, 0.1);
+
+  /* Tamaños base */
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-base: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 30px;
+  --font-size-4xl: 36px;
+  --font-size-5xl: 48px;
+  --font-size-6xl: 60px;
+  --font-size-7xl: 72px;
+  --font-size-8xl: 96px;
+  --font-size-9xl: 128px;
+
+  /* Pesos */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Interlineados */
+  --line-height-none: 1;
+  --line-height-tight: 1.25;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
+
+  /* Tracking */
+  --letter-spacing-tighter: -0.05em;
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: 0em;
+  --letter-spacing-wide: 0.025em;
+  --letter-spacing-wider: 0.05em;
+  --letter-spacing-widest: 0.1em;
+
+  /* Familia */
+  --font-sans: "Inter", sans-serif;
+}
+
+/* Estilos tipográficos */
+.heading-h1 { font-family: var(--font-sans); font-size: 48px; line-height: 1.2; font-weight: 700; letter-spacing: -0.02em; }
+.heading-h2 { font-family: var(--font-sans); font-size: 36px; line-height: 1.2; font-weight: 700; letter-spacing: -0.015em; }
+.heading-h3 { font-family: var(--font-sans); font-size: 24px; line-height: 1.33; font-weight: 700; letter-spacing: -0.01em; }
+.heading-h4 { font-family: var(--font-sans); font-size: 20px; line-height: 1.4; font-weight: 700; letter-spacing: 0em; }
+.body-base { font-family: var(--font-sans); font-size: 16px; line-height: 1.5; font-weight: 400; letter-spacing: 0em; }
+.body-small { font-family: var(--font-sans); font-size: 14px; line-height: 1.43; font-weight: 400; letter-spacing: 0em; }
+.body-xsmall { font-family: var(--font-sans); font-size: 12px; line-height: 1.33; font-weight: 400; letter-spacing: 0em; }
+.body-base-bold { font-family: var(--font-sans); font-size: 16px; line-height: 1.5; font-weight: 700; letter-spacing: 0em; }
+.body-small-bold { font-family: var(--font-sans); font-size: 14px; line-height: 1.43; font-weight: 700; letter-spacing: 0em; }
+.body-xsmall-bold { font-family: var(--font-sans); font-size: 12px; line-height: 1.33; font-weight: 700; letter-spacing: 0em; }
+.body-caption { font-family: var(--font-sans); font-size: 10px; line-height: 1.3; font-weight: 400; letter-spacing: 0.005em; }
+.body-caption-bold { font-family: var(--font-sans); font-size: 10px; line-height: 1.3; font-weight: 700; letter-spacing: 0em; }
